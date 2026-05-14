@@ -97,7 +97,7 @@ class UrlTable(Static):
             return
         self._spinner_frame = (self._spinner_frame + 1) % len(SPINNER_FRAMES)
         table = self.query_one("#url-data", DataTable)
-        for idx, result in enumerate(self._filtered):
+        for _idx, result in enumerate(self._filtered):
             if result.status == PageStatus.CRAWLING:
                 table.update_cell(
                     result.url,

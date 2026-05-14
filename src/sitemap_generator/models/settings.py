@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
 
@@ -89,9 +90,7 @@ class Settings:
         # Legacy-Theme-Slug migrieren
         if settings.theme in _LEGACY_THEME_MAP:
             settings.theme = _LEGACY_THEME_MAP[settings.theme]
-            try:
+            with contextlib.suppress(Exception):
                 settings.save()
-            except Exception:
-                pass
 
         return settings

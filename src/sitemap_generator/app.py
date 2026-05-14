@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import dataclasses
 from datetime import datetime
 from urllib.parse import urlparse
@@ -861,7 +862,5 @@ class SitemapGeneratorApp(App):
             line: Log-Nachricht (kann Rich-Markup enthalten).
         """
         self._log_lines.append(line)
-        try:
+        with contextlib.suppress(Exception):
             self.query_one("#crawl-log", RichLog).write(line)
-        except Exception:
-            pass

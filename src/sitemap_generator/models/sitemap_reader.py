@@ -53,7 +53,9 @@ async def discover_sitemap(
         Die gefundene Sitemap-URL oder None.
     """
     if log is None:
-        log = lambda msg: None
+
+        def log(msg):
+            return None
 
     parsed = urlparse(base_url)
     origin = urlunparse((parsed.scheme, parsed.netloc, "", "", "", ""))
@@ -108,7 +110,9 @@ async def load_sitemap_urls(
         Set aller URLs aus der Sitemap.
     """
     if log is None:
-        log = lambda msg: None
+
+        def log(msg):
+            return None
 
     jar = httpx.Cookies()
     for c in cookies or []:
@@ -208,7 +212,9 @@ def load_sitemap_from_file(
         Tuple aus (basis_url, set_der_urls). Bei Fehler ("", leeres Set).
     """
     if log is None:
-        log = lambda msg: None
+
+        def log(msg):
+            return None
 
     if not os.path.isfile(file_path):
         log(t("sitemap_reader.file_not_found", path=file_path))

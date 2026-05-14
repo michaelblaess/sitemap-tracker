@@ -140,9 +140,14 @@ class Crawler:
             Liste aller Crawl-Ergebnisse.
         """
         if log is None:
-            log = lambda msg: None
+
+            def log(msg):
+                return None
+
         if on_result is None:
-            on_result = lambda r: None
+
+            def on_result(r):
+                return None
 
         self._stats.start_time = datetime.now()
 
@@ -299,9 +304,8 @@ class Crawler:
             if normalized not in self._pending_referrers:
                 self._pending_referrers[normalized] = []
             pending = self._pending_referrers[normalized]
-            if not any(r["url"] == source_url for r in pending):
-                if len(pending) < 50:
-                    pending.append(entry)
+            if not any(r["url"] == source_url for r in pending) and len(pending) < 50:
+                pending.append(entry)
 
     def _count_http_status(self, status_code: int) -> None:
         """Zaehlt den HTTP-Statuscode in die passende Kategorie.
