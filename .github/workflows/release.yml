@@ -12,42 +12,42 @@ jobs:
   build:
     strategy:
       matrix:
-        include:
-          - os: windows-latest
-            shell: pwsh
-            bootstrap: ./bootstrap.ps1
-            compile: ./compile-win64.ps1
-          - os: ubuntu-22.04
-            shell: bash
-            bootstrap: ./bootstrap.sh
-            compile: ./compile-linux.sh
-          - os: macos-latest
-            shell: bash
-            bootstrap: ./bootstrap.sh
-            compile: ./compile-macos.sh
+        os: [windows-latest, ubuntu-22.04, macos-latest]
 
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
       # Nuitka braucht patchelf fuer den --standalone-Build unter Linux
       - name: Install patchelf (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y patchelf
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
+      # bootstrap (venv + Deps + Nuitka + Chromium) + compile (Nuitka-Build)
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          ./bootstrap.ps1
+          ./compile-win64.ps1
 
-      # bootstrap: venv + Deps + Nuitka + Playwright-Chromium
-      - name: Bootstrap dev environment
-        run: ${{ matrix.bootstrap }}
-        shell: ${{ matrix.shell }}
+      - name: Build (Linux)
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          ./bootstrap.sh
+          ./compile-linux.sh
 
-      # compile: Nuitka-Standalone-Build inkl. gebuendeltem Chromium
-      - name: Compile standalone binary (Nuitka)
-        run: ${{ matrix.compile }}
-        shell: ${{ matrix.shell }}
+      - name: Build (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          ./bootstrap.sh
+          ./compile-macos.sh
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
