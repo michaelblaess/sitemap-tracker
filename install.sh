@@ -11,25 +11,39 @@ echo "=== Sitemap Generator - Installer ==="
 echo ""
 
 # OS und Architektur erkennen
-OS="$(uname -s)"
-case "$OS" in
-    Linux*)  PLATFORM="linux";;
-    Darwin*) PLATFORM="macos";;
-    *)       echo "Nicht unterstuetztes OS: $OS"; exit 1;;
+os="$(uname -s)"; arch="$(uname -m)"
+case "$os" in
+    Linux)  os_key="linux" ;;
+    Darwin) os_key="macos" ;;
+    *) echo "Nicht unterstuetztes Betriebssystem: $os" >&2; exit 1 ;;
+esac
+case "$arch" in
+    x86_64|amd64)  arch_key="x86_64" ;;
+    arm64|aarch64) arch_key="arm64" ;;
+    *) arch_key="$arch" ;;
 esac
 
-echo "Plattform: $PLATFORM"
+echo "Plattform: $os_key ($arch_key)"
 
 # Neuestes Release von GitHub holen
 echo "Suche neuestes Release..."
 RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/$REPO/releases/latest")
 
-# Download-URL finden (ohne jq - grep/sed)
-DOWNLOAD_URL=$(echo "$RELEASE_JSON" | grep -o "\"browser_download_url\":[[:space:]]*\"[^\"]*${PLATFORM}[^\"]*\"" | head -1 | grep -o 'https://[^"]*')
+# Asset versionsunabhaengig per OS+Arch waehlen (ohne jq)
+candidates=("${os_key}-${arch_key}")
+[ "$os_key" = "macos" ] && [ "$arch_key" = "arm64" ] && candidates+=("macos-x86_64")
+
+urls="$(echo "$RELEASE_JSON" | grep -oE '"browser_download_url": *"[^"]*"' \
+        | sed -E 's/.*"(https[^"]*)"/\1/')"
+DOWNLOAD_URL=""
+for want in "${candidates[@]}"; do
+    DOWNLOAD_URL="$(echo "$urls" | grep -E "${want}[^/]*\.(zip|tar\.gz)$" | head -1)"
+    [ -n "$DOWNLOAD_URL" ] && break
+done
 
 if [ -z "$DOWNLOAD_URL" ]; then
-    echo "Kein Release fuer $PLATFORM gefunden!"
-    echo "Bitte manuell herunterladen: https://github.com/$REPO/releases"
+    echo "Kein passendes Asset fuer ${os_key}-${arch_key} gefunden. Verfuegbar:" >&2
+    echo "$urls" | sed 's#.*/##' >&2
     exit 1
 fi
 

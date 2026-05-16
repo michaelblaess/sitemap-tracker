@@ -13,11 +13,14 @@ Write-Host "Suche neuestes Release..."
 $Release = Invoke-RestMethod "https://api.github.com/repos/$Repo/releases/latest"
 $Version = $Release.tag_name
 
-# Windows Asset finden
-$Asset = $Release.assets | Where-Object { $_.name -match "windows" } | Select-Object -First 1
+# Windows Asset finden (versionsunabhaengig per Teilstring)
+$Asset = $Release.assets |
+    Where-Object { $_.name -like '*-windows-*.zip' } |
+    Select-Object -First 1
 if (-not $Asset) {
-    Write-Host "Kein Windows-Release gefunden!" -ForegroundColor Red
-    Write-Host "Bitte manuell herunterladen: https://github.com/$Repo/releases"
+    Write-Host "  [FEHLER] Kein Windows-Asset im Release gefunden!" -ForegroundColor Red
+    Write-Host "  Verfuegbare Assets:"
+    $Release.assets | ForEach-Object { Write-Host "    $($_.name)" }
     exit 1
 }
 
