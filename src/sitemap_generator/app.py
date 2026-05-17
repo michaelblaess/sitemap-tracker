@@ -12,11 +12,12 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
-from textual.widgets import Footer, Header, RichLog
+from textual.widgets import Footer, Header
 from textual_themes import register_all
+from textual_widgets import HorizontalSplitter, LogPanel, LogRouter, VerticalSplitter
 
 from . import __version__
-from .i18n import t
+from .i18n import current_language, t
 from .models.crawl_result import CrawlResult, PageStatus
 from .models.history import History, HistoryEntry
 from .models.settings import Settings
@@ -35,7 +36,7 @@ LOG_HEIGHT_MAX = 35
 LOG_HEIGHT_STEP = 3
 
 
-class SitemapGeneratorApp(App):
+class SitemapGeneratorApp(LogRouter, App):
     """TUI-Anwendung zum Crawlen von Websites und Erzeugen von Sitemaps."""
 
     CSS_PATH = "app.tcss"
@@ -108,7 +109,6 @@ class SitemapGeneratorApp(App):
         self._crawl_running: bool = False
         self._results: list[CrawlResult] = []
         self._official_sitemap_urls: set[str] = set()
-        self._log_lines: list[str] = []
         self._log_height: int = LOG_HEIGHT_DEFAULT
         self._stats_timer = None
 
@@ -150,8 +150,14 @@ class SitemapGeneratorApp(App):
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
                 yield UrlTable(id="url-table")
-                yield RichLog(id="crawl-log", highlight=True, markup=True)
+                yield HorizontalSplitter(target_id="url-table", min_size=5, id="log-splitter")
+                yield LogPanel(
+                    lang=current_language(),
+                    export_name="sitemap-generator",
+                    id="crawl-log",
+                )
 
+            yield VerticalSplitter(target_id="left-panel", min_size=40, id="main-splitter")
             yield StatsPanel(id="stats-panel")
 
         yield Footer()
@@ -267,11 +273,11 @@ class SitemapGeneratorApp(App):
         url_table = self.query_one("#url-table", UrlTable)
         url_table.clear_results()
 
-        # Log einblenden und leeren
-        log_widget = self.query_one("#crawl-log", RichLog)
-        log_widget.remove_class("hidden")
-        log_widget.clear()
-        self._log_lines.clear()
+        # Log-Panel (samt Splitter) einblenden und leeren
+        log_panel = self.query_one("#crawl-log", LogPanel)
+        log_panel.show()
+        log_panel.clear_log()
+        self.query_one("#log-splitter", HorizontalSplitter).remove_class("hidden")
 
         mode = t("mode.playwright") if self.render else t("mode.httpx_short")
         self._write_log(t("log.start_crawl", url=self.start_url))
@@ -563,22 +569,8 @@ class SitemapGeneratorApp(App):
             self.notify(t("notify.filter_all"))
 
     def action_copy_log(self) -> None:
-        """Kopiert das Log in die Zwischenablage."""
-        if not self._log_lines:
-            self.notify(t("notify.log_empty"), severity="warning")
-            return
-
-        # Rich-Markup entfernen fuer Clipboard
-        import re
-
-        clean_lines = []
-        for line in self._log_lines:
-            clean = re.sub(r"\[/?[^\]]*\]", "", line)
-            clean_lines.append(clean)
-
-        text = "\n".join(clean_lines)
-        self.copy_to_clipboard(text)
-        self.notify(t("notify.log_copied"))
+        """Kopiert das Log in die Zwischenablage (delegiert an das LogPanel)."""
+        self.query_one("#crawl-log", LogPanel).copy_log()
 
     def action_show_history(self) -> None:
         """Zeigt den History-Dialog an."""
@@ -630,27 +622,55 @@ class SitemapGeneratorApp(App):
         stats_panel.show_url_detail(event.result)
 
     def action_toggle_log(self) -> None:
-        """Blendet den Log-Bereich ein/aus."""
-        log_widget = self.query_one("#crawl-log", RichLog)
-        log_widget.toggle_class("hidden")
+        """Blendet das Log-Panel (samt Splitter) ein/aus."""
+        log_panel = self.query_one("#crawl-log", LogPanel)
+        log_panel.toggle()
+        self.query_one("#log-splitter", HorizontalSplitter).set_class(log_panel.has_class("-log-hidden"), "hidden")
+
+    def on_log_panel_hidden(self, event: LogPanel.Hidden) -> None:
+        """Log per Kontextmenue ausgeblendet — Splitter mit ausblenden."""
+        self.query_one("#log-splitter", HorizontalSplitter).add_class("hidden")
 
     def action_log_bigger(self) -> None:
         """Vergroessert den Log-Bereich."""
         self._log_height = min(self._log_height + LOG_HEIGHT_STEP, LOG_HEIGHT_MAX)
-        log_widget = self.query_one("#crawl-log", RichLog)
-        log_widget.styles.height = self._log_height
+        self._apply_log_height()
 
     def action_log_smaller(self) -> None:
         """Verkleinert den Log-Bereich."""
         self._log_height = max(self._log_height - LOG_HEIGHT_STEP, LOG_HEIGHT_MIN)
-        log_widget = self.query_one("#crawl-log", RichLog)
-        log_widget.styles.height = self._log_height
+        self._apply_log_height()
+
+    def _apply_log_height(self) -> None:
+        """Setzt die Log-Hoehe konkret und gibt der URL-Tabelle den Restplatz.
+
+        url-table auf 4fr zuruecksetzen, damit kein Leerraum entsteht, falls
+        der Splitter zuvor eine konkrete Tabellenhoehe gesetzt hatte.
+        """
+        self.query_one("#crawl-log", LogPanel).styles.height = self._log_height
+        self.query_one("#url-table", UrlTable).styles.height = "4fr"
+
+    def on_horizontal_splitter_resized(self, event: HorizontalSplitter.Resized) -> None:
+        """Nach dem Log-Splitter-Drag faengt der Log (1fr) den Restplatz auf."""
+        self.query_one("#crawl-log", LogPanel).styles.height = "1fr"
 
     def action_show_about(self) -> None:
-        """Zeigt den About-Dialog an."""
-        from .screens.about import AboutScreen
+        """Zeigt den standardisierten About-Dialog aus textual-widgets an."""
+        from textual_widgets import AboutScreen
 
-        self.push_screen(AboutScreen())
+        from . import __author__, __year__
+
+        self.push_screen(
+            AboutScreen(
+                app_name="Sitemap Generator",
+                version=__version__,
+                author=__author__,
+                release=__year__,
+                description=t("about.description"),
+                lang=current_language(),
+                url="https://github.com/michaelblaess/sitemap-generator",
+            )
+        )
 
     def action_jira_report(self) -> None:
         """Kopiert eine JIRA-Wiki-Tabelle mit Fehlern in die Zwischenablage."""
@@ -856,11 +876,10 @@ class SitemapGeneratorApp(App):
         self.exit()
 
     def _write_log(self, line: str) -> None:
-        """Schreibt eine Zeile ins Log-Widget und in den Puffer.
+        """Schreibt eine Zeile ins Log-Panel.
 
         Args:
             line: Log-Nachricht (kann Rich-Markup enthalten).
         """
-        self._log_lines.append(line)
         with contextlib.suppress(Exception):
-            self.query_one("#crawl-log", RichLog).write(line)
+            self.query_one("#crawl-log", LogPanel).write_log(line)

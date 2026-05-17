@@ -23,11 +23,9 @@
   "binding.copy_ascii": "Copy ASCII",
   "binding.expand_all": "Expand all",
   "binding.collapse_all": "Collapse all",
-
   "mode.playwright": "Playwright",
   "mode.httpx": "httpx (fast)",
   "mode.httpx_short": "httpx",
-
   "notify.crawl_running": "Crawl already running!",
   "notify.no_urls_in_file": "No URLs found in file!",
   "notify.no_url": "No URL provided! Please pass a URL as parameter.",
@@ -57,7 +55,6 @@
   "notify.no_tree": "No tree available.",
   "notify.tree_expanded": "Tree expanded",
   "notify.tree_collapsed": "Tree collapsed",
-
   "log.version": "[bold]Playwright Sitemap Generator v{version}[/bold]",
   "log.config": "Mode: {mode} | Concurrency: {concurrency} | Timeout: {timeout}s | Max depth: {max_depth} | robots.txt: {robots}",
   "log.robots_on": "ON",
@@ -93,11 +90,9 @@
   "log.forms_written": "[green]Forms report written: {filename} ({count} pages)[/green]",
   "log.sitemap_diff_copied": "[green]Sitemap diff copied: {missing} missing in sitemap, {not_crawled} not crawled[/green]",
   "log.history_loaded": "[bold]History loaded: {url}[/bold]\n  Mode: {mode} | Depth: {max_depth} | Concurrency: {concurrency}",
-
   "subtitle.crawling": "Crawling {url}...",
   "subtitle.cancelled": "Cancelled",
   "subtitle.crawled": "{count} URLs crawled",
-
   "stats.ready": "Ready - press [bold]s[/bold] to start the scan",
   "stats.discovered": "Discovered",
   "stats.crawled": "Crawled",
@@ -106,7 +101,6 @@
   "stats.max_depth": "Max depth",
   "stats.duration": "Duration",
   "stats.urls_per_sec": "URLs/sec",
-
   "detail.url": "URL",
   "detail.status": "Status",
   "detail.redirect": "Redirect",
@@ -123,10 +117,8 @@
   "detail.error": "Error",
   "detail.ctrl_click": "CTRL+click on URLs to open in browser",
   "detail.referring_pages": "Referring pages:",
-
   "summary.mode": "Mode: {mode}",
   "summary.crawled": "Crawled: [bold]{count}[/bold]",
-
   "table.columns.number": "#",
   "table.columns.status": "Status",
   "table.columns.http": "HTTP",
@@ -138,7 +130,6 @@
   "table.filter_placeholder": "Filter (URL, status...)",
   "table.count": " {count} URLs",
   "table.count_filtered": " {shown} of {total} URLs (filtered)",
-
   "history.title": "Crawl History",
   "history.empty": "No crawls in history yet.\n\nStart a crawl with a URL,\nand it will appear here.",
   "history.col_number": "#",
@@ -146,22 +137,16 @@
   "history.col_url": "URL",
   "history.col_params": "Parameters",
   "history.footer": "Enter = Select  |  ESC/q = Close",
-
   "about.description": "Crawls a website recursively and generates an\nXML sitemap. Detects dead links (4xx/5xx),\ntimeouts and redirect chains.\n\n[bold]Features:[/bold]\n  - Two modes: httpx (fast) or Playwright (JS)\n  - Dead link detection with referring pages\n  - JIRA table and JSON error report export\n  - Site tree with Mermaid/ASCII export\n  - robots.txt support (toggleable)\n  - Crawl history with replay\n\n[bold]All keybindings are visible in the footer\nbar at the bottom of the screen.[/bold]",
-  "about.quote": "[dim italic]\"Darkness cannot drive out darkness;\n only light can do that.\n Hate cannot drive out hate;\n only love can do that.\"\n - Martin Luther King Jr.[/dim italic]",
-  "about.footer": "ESC = Close",
-
   "tree.title": "Site tree",
   "tree.root_label": "Pages",
   "tree.no_data": "No data",
   "tree.footer": "m = Mermaid  |  a = ASCII  |  e = Expand  |  c = Collapse  |  ESC/q = Close",
-
   "diff.header": "=== SITEMAP DIFF ===",
   "diff.official_count": "Official sitemap: {count} URLs",
   "diff.crawled_count": "Crawled (2xx): {count} URLs",
   "diff.not_in_sitemap": "--- Crawled but NOT in sitemap ({count}) ---",
   "diff.not_crawled": "--- In sitemap but NOT crawled ({count}) ---",
-
   "copy.url": "URL: {url}",
   "copy.status": "Status: {icon} {status}",
   "copy.redirect": "Redirect: {url}",
@@ -171,9 +156,7 @@
   "copy.load_time": "Load time: {time}",
   "copy.error": "Error: {message}",
   "copy.referring_pages": "Referring pages:",
-
   "jira.header": "||URL||HTTP||Error||Referring pages||",
-
   "error.dns_not_resolved": "DNS error: Domain could not be resolved (typo in URL?)",
   "error.dns_no_address": "DNS error: No IP address found for this domain",
   "error.connection_refused": "Connection refused: Server not responding on this port",
@@ -181,7 +164,6 @@
   "error.timeout": "Timeout: Server did not respond in time",
   "error.ssl": "SSL/TLS error: {error}",
   "error.too_many_redirects": "Too many redirects (redirect loop?)",
-
   "sitemap_reader.check_robots": "  Checking robots.txt sitemap: {url}",
   "sitemap_reader.found": "  [green]Sitemap found: {url}[/green]",
   "sitemap_reader.unreachable": "  {url} unreachable, continuing...",
@@ -200,7 +182,6 @@
   "sitemap_reader.file_no_urls": "  [yellow]No URLs found in file[/yellow]",
   "sitemap_reader.file_loaded": "  [green]{count} URLs loaded from file[/green]",
   "sitemap_reader.file_base_url": "  Base URL: {url}",
-
   "crawler.loading_robots": "Loading robots.txt...",
   "crawler.robots_sitemaps": "  robots.txt: {count} sitemap(s) found",
   "crawler.robots_loaded": "  robots.txt loaded",
@@ -211,7 +192,6 @@
   "crawler.skip_robots": "  [dim]SKIP (robots.txt): {url}[/dim]",
   "crawler.retry": "  [yellow]Retry {attempt}/{max}: {url}[/yellow]",
   "crawler.error": "  [red]ERR | {url} | {message}[/red]",
-
   "cli.banner": "\n  Sitemap Generator v{version}\n  Crawls websites and generates standard-compliant sitemap.xml files\n",
   "cli.examples": "\nExamples:\n  sitemap-generator https://example.com\n  sitemap-generator https://example.com --render\n  sitemap-generator https://example.com --max-depth 5 --concurrency 16\n  sitemap-generator https://example.com --output sitemap.xml\n  sitemap-generator https://example.com --ignore-robots\n  sitemap-generator https://example.com --cookie auth=token123\n  sitemap-generator sitemap_example.xml --cookie auth=token123\n\nKeybindings in the TUI:\n  s = Start crawl      x = Cancel crawl     r = Save sitemap\n  l = Toggle log       + / - = Log height\n  i = Info             q = Quit\n",
   "cli.url_help": "Start URL of the website (e.g. https://example.com) or path to a sitemap XML file",

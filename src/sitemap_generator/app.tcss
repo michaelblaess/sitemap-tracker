@@ -9,30 +9,38 @@ Screen {
     layout: horizontal;
 }
 
+/* Initial-Breite als Prozent (skaliert mit der Terminalbreite). Der
+   VerticalSplitter ueberschreibt das nach dem ersten Drag mit konkreten
+   Zellen-Werten. */
 #left-panel {
     width: 65%;
+    min-width: 40;
     height: 1fr;
     layout: vertical;
 }
 
+/* 4fr/1fr-Aufteilung mit dem Log. url-table ist das Splitter-Ziel und wird
+   bei Drag auf konkrete Zellen gesetzt; der Log faengt als 1fr den Rest auf. */
 #url-table {
-    height: 1fr;
-}
-
-#crawl-log {
-    height: 15;
+    height: 4fr;
     min-height: 5;
-    max-height: 30;
-    border-top: solid $accent;
-    display: block;
 }
 
-#crawl-log.hidden {
+#log-splitter.hidden {
     display: none;
 }
 
+/* LogPanel verwaltet seinen Hidden-Zustand selbst (-log-hidden-Klasse). */
+#crawl-log {
+    height: 1fr;
+    min-height: 5;
+    max-height: 35;
+}
+
+/* 1fr — faengt den Restplatz neben dem (per Splitter resize-baren)
+   left-panel auf. */
 #stats-panel {
-    width: 35%;
+    width: 1fr;
     height: 1fr;
 }
 
