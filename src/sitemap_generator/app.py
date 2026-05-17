@@ -44,11 +44,10 @@ class SitemapGeneratorApp(LogRouter, App):
 
     BINDINGS = [
         Binding("q", "quit", "placeholder"),
-        Binding("s", "start_crawl", "placeholder"),
+        Binding("c", "start_crawl", "placeholder"),
         Binding("x", "action_x", "placeholder"),
         Binding("m", "save_sitemap", "placeholder"),
-        Binding("o", "toggle_robots", "placeholder"),
-        Binding("p", "toggle_playwright", "placeholder"),
+        Binding("s", "show_settings", "placeholder"),
         Binding("h", "show_history", "placeholder"),
         Binding("e", "toggle_errors", "placeholder"),
         Binding("j", "jira_report", "placeholder"),
@@ -56,10 +55,9 @@ class SitemapGeneratorApp(LogRouter, App):
         Binding("b", "show_tree", "placeholder"),
         Binding("f", "sitemap_diff", "placeholder"),
         Binding("d", "copy_detail", "placeholder"),
-        Binding("c", "copy_log", "placeholder"),
         Binding("l", "toggle_log", "placeholder"),
-        Binding("plus", "log_bigger", "+", key_display="+"),
-        Binding("minus", "log_smaller", "-", key_display="-"),
+        Binding("plus", "log_bigger", "+", key_display="+", show=False),
+        Binding("minus", "log_smaller", "-", key_display="-", show=False),
         Binding("i", "show_about", "placeholder"),
     ]
 
@@ -68,9 +66,9 @@ class SitemapGeneratorApp(LogRouter, App):
         start_url: str = "",
         sitemap_file: str = "",
         output_path: str = "",
-        max_depth: int = 10,
-        concurrency: int = 8,
-        timeout: int = 30,
+        max_depth: int | None = None,
+        concurrency: int | None = None,
+        timeout: int | None = None,
         render: bool = False,
         headless: bool = True,
         respect_robots: bool = True,
@@ -89,9 +87,10 @@ class SitemapGeneratorApp(LogRouter, App):
         self.start_url = start_url
         self.sitemap_file = sitemap_file
         self.output_path = output_path
-        self.max_depth = max_depth
-        self.concurrency = concurrency
-        self.timeout = timeout
+        # Crawl-Parameter: CLI ueberschreibt, sonst aus den Settings
+        self.max_depth = max_depth if max_depth is not None else self._settings.max_depth
+        self.concurrency = concurrency if concurrency is not None else self._settings.concurrency
+        self.timeout = timeout if timeout is not None else self._settings.timeout
         self.headless = headless
         self.user_agent = user_agent
         self.cookies = cookies or []
@@ -122,8 +121,7 @@ class SitemapGeneratorApp(LogRouter, App):
             "start_crawl": t("binding.crawl"),
             "action_x": t("binding.cancel"),
             "save_sitemap": t("binding.save_sitemap"),
-            "toggle_robots": t("binding.robots_on"),
-            "toggle_playwright": t("binding.playwright_off"),
+            "show_settings": t("binding.settings"),
             "show_history": t("binding.history"),
             "toggle_errors": t("binding.errors_only"),
             "jira_report": t("binding.jira"),
@@ -131,7 +129,6 @@ class SitemapGeneratorApp(LogRouter, App):
             "show_tree": t("binding.tree"),
             "sitemap_diff": t("binding.sitemap_diff"),
             "copy_detail": t("binding.copy_detail"),
-            "copy_log": t("binding.copy_log"),
             "toggle_log": t("binding.log"),
             "show_about": t("binding.info"),
         }
@@ -190,10 +187,6 @@ class SitemapGeneratorApp(LogRouter, App):
             summary.set_info(self.start_url, mode)
             self.sub_title = self.start_url
 
-        # Binding-Labels initial setzen
-        self._update_robots_binding_label()
-        self._update_playwright_binding_label()
-
         # Focus auf Tabelle
         try:
             from textual.widgets import DataTable
@@ -202,26 +195,6 @@ class SitemapGeneratorApp(LogRouter, App):
             table.focus()
         except Exception:
             pass
-
-    def _update_robots_binding_label(self) -> None:
-        """Aktualisiert das Binding-Label fuer robots.txt Toggle."""
-        label = t("binding.robots_on") if self.respect_robots else t("binding.robots_off")
-        bindings_list = self._bindings.key_to_bindings.get("o", [])
-        for i, binding in enumerate(bindings_list):
-            if binding.action == "toggle_robots":
-                self._bindings.key_to_bindings["o"][i] = dataclasses.replace(binding, description=label)
-                break
-        self.refresh_bindings()
-
-    def _update_playwright_binding_label(self) -> None:
-        """Aktualisiert das Binding-Label fuer Playwright Toggle."""
-        label = t("binding.playwright_on") if self.render else t("binding.playwright_off")
-        bindings_list = self._bindings.key_to_bindings.get("p", [])
-        for i, binding in enumerate(bindings_list):
-            if binding.action == "toggle_playwright":
-                self._bindings.key_to_bindings["p"][i] = dataclasses.replace(binding, description=label)
-                break
-        self.refresh_bindings()
 
     def _update_x_binding_label(self, label: str) -> None:
         """Aktualisiert das Binding-Label fuer die x-Taste.
@@ -518,35 +491,48 @@ class SitemapGeneratorApp(LogRouter, App):
 
         self.notify(t("notify.sitemap_saved", path=written[0], count=len(http_200)))
 
-    def action_toggle_robots(self) -> None:
-        """Schaltet robots.txt-Beachtung um (AN/AUS)."""
-        self.respect_robots = not self.respect_robots
+    def action_show_settings(self) -> None:
+        """Zeigt den Settings-Dialog (Sprache + Crawl-Optionen)."""
+        from .screens.settings import SitemapSettingsScreen
 
-        if self.respect_robots:
-            self._write_log(t("log.robots_respected"))
-        else:
-            self._write_log(t("log.robots_ignored"))
+        current: dict[str, object] = {
+            "language": self._settings.language,
+            "respect_robots": self.respect_robots,
+            "render": self.render,
+            "concurrency": self.concurrency,
+            "timeout": self.timeout,
+            "max_depth": self.max_depth,
+        }
+        self.push_screen(
+            SitemapSettingsScreen(current, lang=current_language()),
+            callback=self._on_settings_closed,
+        )
 
-        self._update_robots_binding_label()
+    def _on_settings_closed(self, result: dict[str, object] | None) -> None:
+        """Uebernimmt die geaenderten Settings und persistiert sie.
 
-        # Einstellung persistent speichern
+        Args:
+            result: Geaendertes Settings-Dict oder None bei Abbruch.
+        """
+        if result is None:
+            return
+
+        self.respect_robots = bool(result.get("respect_robots", self.respect_robots))
+        self.render = bool(result.get("render", self.render))
+        self.concurrency = int(result.get("concurrency", self.concurrency))  # type: ignore[arg-type]
+        self.timeout = int(result.get("timeout", self.timeout))  # type: ignore[arg-type]
+        self.max_depth = int(result.get("max_depth", self.max_depth))  # type: ignore[arg-type]
+
         self._settings.respect_robots = self.respect_robots
-        self._settings.save()
-
-    def action_toggle_playwright(self) -> None:
-        """Schaltet Playwright-Rendering um (AN/AUS)."""
-        self.render = not self.render
-
-        if self.render:
-            self._write_log(t("log.playwright_on"))
-        else:
-            self._write_log(t("log.playwright_off"))
-
-        self._update_playwright_binding_label()
-
-        # Einstellung persistent speichern
         self._settings.render = self.render
+        self._settings.concurrency = self.concurrency
+        self._settings.timeout = self.timeout
+        self._settings.max_depth = self.max_depth
+        self._settings.language = str(result.get("language", self._settings.language))
         self._settings.save()
+
+        self._write_log(t("log.robots_respected") if self.respect_robots else t("log.robots_ignored"))
+        self._write_log(t("log.playwright_on") if self.render else t("log.playwright_off"))
 
     def action_toggle_errors(self) -> None:
         """Schaltet den Error-Filter in der Tabelle um."""
@@ -567,10 +553,6 @@ class SitemapGeneratorApp(LogRouter, App):
         else:
             self._write_log(t("log.filter_all"))
             self.notify(t("notify.filter_all"))
-
-    def action_copy_log(self) -> None:
-        """Kopiert das Log in die Zwischenablage (delegiert an das LogPanel)."""
-        self.query_one("#crawl-log", LogPanel).copy_log()
 
     def action_show_history(self) -> None:
         """Zeigt den History-Dialog an."""
@@ -602,9 +584,6 @@ class SitemapGeneratorApp(LogRouter, App):
         summary = self.query_one("#summary", SummaryPanel)
         summary.set_info(self.start_url, mode)
         self.sub_title = self.start_url
-
-        self._update_robots_binding_label()
-        self._update_playwright_binding_label()
 
         self._write_log(
             t(

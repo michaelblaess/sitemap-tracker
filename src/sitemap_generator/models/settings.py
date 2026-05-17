@@ -54,6 +54,9 @@ class Settings:
         self.respect_robots: bool = True
         self.render: bool = False
         self.language: str = "de"
+        self.concurrency: int = 8
+        self.timeout: int = 30
+        self.max_depth: int = 10
 
     def save(self) -> None:
         """Speichert die Einstellungen in eine JSON-Datei."""
@@ -63,6 +66,9 @@ class Settings:
             "respect_robots": self.respect_robots,
             "render": self.render,
             "language": self.language,
+            "concurrency": self.concurrency,
+            "timeout": self.timeout,
+            "max_depth": self.max_depth,
         }
         _SETTINGS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
@@ -84,6 +90,9 @@ class Settings:
                 settings.respect_robots = data.get("respect_robots", settings.respect_robots)
                 settings.render = data.get("render", settings.render)
                 settings.language = data.get("language", settings.language)
+                settings.concurrency = int(data.get("concurrency", settings.concurrency))
+                settings.timeout = int(data.get("timeout", settings.timeout))
+                settings.max_depth = int(data.get("max_depth", settings.max_depth))
             except Exception:
                 pass
 

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from rich.text import Text
+from textual import events
 from textual.app import ComposeResult
 from textual.message import Message
 from textual.widgets import DataTable, Input, Static
+from textual_widgets import SearchInputWithHistory
 
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, PageStatus
@@ -19,15 +21,14 @@ class UrlTable(Static):
 
     DEFAULT_CSS = """
     UrlTable #results-count {
-        height: 1;
+        display: none;
+        height: auto;
         padding: 0 1;
         color: $text-muted;
     }
 
-    UrlTable #filter-bar {
-        dock: top;
-        height: 3;
-        padding: 0 1;
+    UrlTable #filter-search {
+        height: auto;
     }
 
     UrlTable DataTable {
@@ -62,7 +63,13 @@ class UrlTable(Static):
     def compose(self) -> ComposeResult:
         """Erstellt die DataTable mit Filter-Eingabe."""
         yield Static("", id="results-count")
-        yield Input(placeholder=t("table.filter_placeholder"), id="filter-bar")
+        yield SearchInputWithHistory(
+            placeholder=t("table.filter_placeholder"),
+            icon="🔍",
+            input_id="filter-bar",
+            dropdown_id="filter-dropdown",
+            id="filter-search",
+        )
         yield DataTable(id="url-data", cursor_type="row")
 
     def on_mount(self) -> None:
@@ -89,6 +96,11 @@ class UrlTable(Static):
         if event.input.id == "filter-bar":
             self._filter_text = event.value
             self._apply_filter()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Uebernimmt den Filter-Begriff in die Verlaufs-Historie (Enter)."""
+        if event.input.id == "filter-bar" and event.value.strip():
+            self.query_one("#filter-search", SearchInputWithHistory).add(event.value.strip())
 
     def _tick_spinner(self) -> None:
         """Aktualisiert den Spinner-Frame der CRAWLING-Zeilen in-place."""
@@ -265,6 +277,11 @@ class UrlTable(Static):
         total = len(self._results)
         shown = len(self._filtered)
         count_label = self.query_one("#results-count", Static)
+        # Leeres Zaehler-Label nicht anzeigen (sonst Leerzeile ueber dem Filter)
+        if total == 0:
+            count_label.display = False
+            return
+        count_label.display = True
         if total == shown:
             count_label.update(t("table.count", count=total))
         else:
@@ -380,12 +397,23 @@ class UrlTable(Static):
         self._apply_filter()
         return self._show_only_errors
 
-    def on_key(self, event) -> None:
-        """Deaktiviert Auto-Scroll bei manueller Navigation.
+    def on_key(self, event: events.Key) -> None:
+        """Esc verlaesst das Filterfeld; Nav-Tasten deaktivieren Auto-Scroll.
+
+        Esc im Filterfeld gibt den Fokus zurueck an die Tabelle (Footer kommt
+        zurueck). Der Fokuswechsel wird via call_after_refresh verzoegert, sonst
+        wird er im selben Event-Zyklus wieder ueberschrieben.
 
         Args:
             event: Das Key-Event.
         """
+        if event.key == "escape":
+            focused = self.app.focused
+            if isinstance(focused, Input) and focused.id == "filter-bar":
+                event.stop()
+                table = self.query_one("#url-data", DataTable)
+                self.call_after_refresh(lambda: self.app.set_focus(table))
+            return
         if event.key in self._NAV_KEYS:
             self._auto_scroll = False
 

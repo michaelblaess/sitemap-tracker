@@ -72,7 +72,7 @@ def main() -> None:
         "--max-depth",
         "-d",
         type=int,
-        default=10,
+        default=None,
         metavar="N",
         help=t("cli.max_depth_help"),
     )
@@ -80,7 +80,7 @@ def main() -> None:
         "--concurrency",
         "-c",
         type=int,
-        default=8,
+        default=None,
         metavar="N",
         help=t("cli.concurrency_help"),
     )
@@ -88,7 +88,7 @@ def main() -> None:
         "--timeout",
         "-t",
         type=int,
-        default=30,
+        default=None,
         metavar="SEC",
         help=t("cli.timeout_help"),
     )
