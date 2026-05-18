@@ -142,17 +142,17 @@ git clone https://github.com/michaelblaess/sitemap-generator.git
 cd sitemap-generator
 
 # Windows
-setup-dev-environment.bat
+.\bootstrap.ps1
 
 # Linux/macOS
-./setup-dev-environment.sh
+./bootstrap.sh
 ```
 
 ### Local Start
 
 ```bash
 # Windows
-run.bat https://example.com
+.\run.ps1 https://example.com
 
 # Linux/macOS
 ./run.sh https://example.com
