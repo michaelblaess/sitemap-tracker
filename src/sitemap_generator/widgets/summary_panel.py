@@ -13,6 +13,9 @@ class SummaryPanel(Static):
 
     def __init__(self, **kwargs) -> None:
         super().__init__("", **kwargs)
+        # Leeres Panel nicht anzeigen - ein leerer Static ist sonst 1 Zeile
+        # hoch und erzeugt eine Luecke zwischen Header und Filterleiste.
+        self.display = False
 
     def set_info(self, url: str, mode: str) -> None:
         """Setzt die Basis-Info (URL und Modus).
@@ -22,6 +25,7 @@ class SummaryPanel(Static):
             mode: Crawl-Modus (httpx / Playwright).
         """
         self.update(f"[bold]{url}[/bold] | {t('summary.mode', mode=mode)}")
+        self.display = True
 
     def update_stats(self, stats: CrawlStats) -> None:
         """Aktualisiert die Statistik-Anzeige.
@@ -43,3 +47,4 @@ class SummaryPanel(Static):
         parts.append(stats.duration_display)
 
         self.update(" | ".join(parts))
+        self.display = True
