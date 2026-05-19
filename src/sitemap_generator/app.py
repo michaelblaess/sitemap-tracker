@@ -14,7 +14,7 @@ from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
 from textual.widgets import Footer, Header
 from textual_themes import register_all
-from textual_widgets import HorizontalSplitter, LogPanel, LogRouter, VerticalSplitter
+from textual_widgets import HorizontalSplitter, LogPanel, LogRouter, UrlInputScreen, VerticalSplitter
 
 from . import __version__
 from .i18n import current_language, t
@@ -209,6 +209,27 @@ class SitemapGeneratorApp(LogRouter, App):
                 break
         self.refresh_bindings()
 
+    def _on_url_entered(self, url: str | None) -> None:
+        """Callback des URL-Dialogs.
+
+        Uebernimmt die eingegebene URL, aktualisiert die Anzeige und startet
+        den Crawl erneut. Bei Abbruch (url is None) passiert nichts.
+
+        Args:
+            url: Die im Dialog eingegebene URL oder None bei Abbruch.
+        """
+        if url is None:
+            return
+
+        self.start_url = url
+        self.sub_title = url
+
+        summary = self.query_one("#summary", SummaryPanel)
+        mode = t("mode.playwright") if self.render else t("mode.httpx")
+        summary.set_info(self.start_url, mode)
+
+        self.action_start_crawl()
+
     @work(exclusive=True, group="crawl")
     async def action_start_crawl(self) -> None:
         """Startet den Crawl-Vorgang."""
@@ -235,7 +256,11 @@ class SitemapGeneratorApp(LogRouter, App):
             summary.set_info(self.start_url, mode)
 
         if not self.start_url:
-            self.notify(t("notify.no_url"), severity="error")
+            # Keine URL vorhanden: per Dialog abfragen statt nur zu melden.
+            self.push_screen(
+                UrlInputScreen(lang=current_language()),
+                callback=self._on_url_entered,
+            )
             return
 
         self._crawl_running = True
