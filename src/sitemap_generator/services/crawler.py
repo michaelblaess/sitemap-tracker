@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import time
 from collections import deque
 from collections.abc import Callable
@@ -477,6 +478,7 @@ class Crawler:
 
         result.content_type = response.headers.get("content-type", "")
         result.last_modified = response.headers.get("last-modified", "")
+        result.page_size = len(response.content)
 
         if response.history:
             # Redirect erkannt: Original-Statuscode speichern (301/302),
@@ -538,6 +540,8 @@ class Crawler:
             if response:
                 result.content_type = response.headers.get("content-type", "")
                 result.last_modified = response.headers.get("last-modified", "")
+                with contextlib.suppress(Exception):
+                    result.page_size = len(await response.body())
 
                 # Redirect-Erkennung via Playwright
                 if response.request.redirected_from:

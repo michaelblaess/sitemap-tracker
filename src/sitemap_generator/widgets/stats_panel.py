@@ -45,6 +45,43 @@ def _sanitize_url(url: str) -> str:
     )
 
 
+def _format_load_time(ms: float) -> str:
+    """Formatiert eine Ladezeit (de-DE).
+
+    Ab einer Sekunde als Sekundenwert mit einer Nachkommastelle
+    (z.B. "1,8s"), darunter in Millisekunden (z.B. "839ms").
+
+    Args:
+        ms: Ladezeit in Millisekunden.
+
+    Returns:
+        Formatierte Ladezeit, "-" wenn keine Zeit vorliegt.
+    """
+    if ms <= 0:
+        return "-"
+    if ms >= 1000:
+        return f"{ms / 1000:.1f}".replace(".", ",") + "s"
+    return f"{ms:.0f}ms"
+
+
+def _format_size(num_bytes: int) -> str:
+    """Formatiert eine Byte-Groesse als B / KB / MB (de-DE).
+
+    Args:
+        num_bytes: Groesse in Bytes.
+
+    Returns:
+        Formatierte Groesse, "-" wenn keine Groesse vorliegt.
+    """
+    if num_bytes <= 0:
+        return "-"
+    if num_bytes < 1024:
+        return f"{num_bytes} B"
+    if num_bytes < 1024 * 1024:
+        return f"{num_bytes / 1024:.1f}".replace(".", ",") + " KB"
+    return f"{num_bytes / (1024 * 1024):.1f}".replace(".", ",") + " MB"
+
+
 class StatsPanel(Static):
     """Panel mit Live-Crawl-Statistiken und URL-Detail-Ansicht."""
 
@@ -139,12 +176,8 @@ class StatsPanel(Static):
         )
         renderables.append(self._detail_line(t("detail.depth"), str(result.depth)))
         renderables.append(self._detail_line(t("detail.links"), str(result.links_found)))
-        renderables.append(
-            self._detail_line(
-                t("detail.load_time"),
-                f"{result.load_time_ms:.0f}ms" if result.load_time_ms else "-",
-            )
-        )
+        renderables.append(self._detail_line(t("detail.load_time"), _format_load_time(result.load_time_ms)))
+        renderables.append(self._detail_line(t("detail.size"), _format_size(result.page_size)))
         form_value = t("detail.form_yes") if result.has_form else t("detail.form_no")
         form_style = "green" if result.has_form else "dim"
         renderables.append(self._detail_line(t("detail.form"), form_value, form_style))

@@ -63,6 +63,7 @@ class CrawlResult:
     depth: int = 0
     parent_url: str = ""
     load_time_ms: float = 0
+    page_size: int = 0  # size of the fetched document in bytes
     last_modified: str = ""  # from HTTP Last-Modified header
     links_found: int = 0  # number of internal links found on page
     has_form: bool = False  # page contains <form> element(s)
