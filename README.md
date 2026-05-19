@@ -87,7 +87,7 @@ sitemap-generator https://example.com --cookie session=abc123
 
 | Key | Function |
 |---|---|
-| `c` | Start crawl |
+| `c` | Start crawl (URL dialog) |
 | `x` | Cancel crawl / JSON error report |
 | `m` | Save sitemap |
 | `s` | Settings |
@@ -114,9 +114,15 @@ Copying / exporting the log runs via right-click on the log panel.
 - **URL normalization**: Duplicates avoided through normalization
 - **Form detection**: `<form>` tags are detected, marked in the table and exportable as JSON
 - **Live TUI**: Progress, statistics and URL details in real time
+- **URL dialog**: `c` opens a dialog (pre-filled with the last URL) to enter or change the target URL — no restart needed
+- **Crawl header**: All crawl statistics — mode, robots.txt, concurrency, status codes, progress — grouped in one collapsible header
+- **Page details**: Selecting a URL shows grouped panels — page info, issues, tech stack, SEO/meta data and HTTP headers
+- **Issue detection**: Flags common problems per page — HTTP errors, missing/overlong title & description, missing H1/viewport/canonical, `noindex`, slow load, large page
+- **Tech-stack detection**: Detects the CMS, JS/CSS frameworks and server software of each page
+- **Page preview**: Optional in-terminal screenshot of the selected page (TGP/Sixel with half-block fallback) — toggle in settings
 - **Resizable panels**: Splitters to freely resize the URL table, log and stats panels
 - **Log panel**: Right-click context menu — copy, export to file, or hide
-- **Settings dialog**: Language, robots.txt, Playwright, concurrency, timeout and crawl depth — persisted across runs
+- **Settings dialog**: Language, robots.txt, Playwright, page preview, concurrency, timeout and crawl depth — persisted across runs
 - **Filter with history**: Filter the URL table by URL/status; recent filter terms in a dropdown
 
 ## Browser Strategy

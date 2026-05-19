@@ -87,7 +87,7 @@ sitemap-generator https://example.com --cookie session=abc123
 
 | Taste | Funktion |
 |---|---|
-| `c` | Crawl starten |
+| `c` | Crawl starten (URL-Dialog) |
 | `x` | Crawl abbrechen / JSON-Fehlerbericht |
 | `m` | Sitemap speichern |
 | `s` | Einstellungen |
@@ -114,9 +114,15 @@ Log kopieren / exportieren läuft über Rechtsklick auf das Log-Panel.
 - **URL-Normalisierung**: Duplikate durch Normalisierung vermieden
 - **Formular-Erkennung**: `<form>`-Tags werden erkannt, in der Tabelle markiert und als JSON exportierbar
 - **Live-TUI**: Fortschritt, Statistiken und URL-Details in Echtzeit
+- **URL-Dialog**: `c` öffnet einen Dialog (mit der zuletzt verwendeten URL vorbelegt), um die Ziel-URL einzugeben oder zu ändern — ohne Neustart
+- **Crawl-Header**: Alle Crawl-Statistiken — Modus, robots.txt, Concurrency, Statuscodes, Fortschritt — gebündelt in einem einklappbaren Kopf-Panel
+- **Seiten-Details**: Beim Auswählen einer URL erscheinen gruppierte Panels — Seiteninfo, Probleme, Tech-Stack, SEO-/Meta-Daten und HTTP-Header
+- **Problem-Erkennung**: Markiert typische Schwachstellen pro Seite — HTTP-Fehler, fehlender/zu langer Titel & Description, fehlende H1/Viewport/Canonical, `noindex`, langsame Ladezeit, große Seite
+- **Tech-Stack-Erkennung**: Erkennt CMS, JS-/CSS-Frameworks und Server-Software jeder Seite
+- **Seiten-Vorschau**: Optionaler Screenshot der ausgewählten Seite direkt im Terminal (TGP/Sixel mit Half-Block-Fallback) — in den Einstellungen abschaltbar
 - **Anpassbare Panels**: Splitter zum freien Anpassen von URL-Tabelle, Log und Statistik-Panel
 - **Log-Panel**: Rechtsklick-Kontextmenü — kopieren, in Datei exportieren oder ausblenden
-- **Einstellungen-Dialog**: Sprache, robots.txt, Playwright, Concurrency, Timeout und Crawl-Tiefe — dauerhaft gespeichert
+- **Einstellungen-Dialog**: Sprache, robots.txt, Playwright, Seiten-Vorschau, Concurrency, Timeout und Crawl-Tiefe — dauerhaft gespeichert
 - **Filter mit Verlauf**: URL-Tabelle nach URL/Status filtern; letzte Filterbegriffe im Dropdown
 
 ## Browser-Strategie
