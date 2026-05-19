@@ -10,7 +10,8 @@ from __future__ import annotations
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
-from ..models.crawl_result import SeoInfo
+from ..i18n import t
+from ..models.crawl_result import CrawlResult, SeoInfo
 
 # Marker, die in Script-/Link-URLs (oder im Generator-Meta) auf eine
 # Technologie hindeuten. (Suchbegriff in Kleinbuchstaben, Anzeigename).
@@ -158,6 +159,57 @@ def extract_seo(soup: BeautifulSoup) -> SeoInfo:
         robots=_attr(soup.find("meta", attrs={"name": "robots"}), "content"),
         og_tags=og_tags,
     )
+
+
+def detect_issues(result: CrawlResult) -> list[str]:
+    """Erkennt typische Probleme einer Seite aus den bereits geladenen Daten.
+
+    Schnelle Pruefungen ohne zusaetzlichen Request: HTTP-Fehler,
+    fehlende/zu lange SEO-Elemente, fehlende Mobile-Optimierung,
+    langsame Ladezeit, grosse Seite.
+
+    Args:
+        result:
+            Das CrawlResult der Seite.
+
+    Returns:
+        Liste der gefundenen Probleme als lesbare Texte (leer = keine Probleme).
+    """
+    issues: list[str] = []
+
+    if result.http_status_code >= 400:
+        issues.append(t("issue.http_error", code=result.http_status_code))
+
+    # SEO-Pruefungen nur fuer HTML-Seiten.
+    if "html" in result.content_type.lower():
+        seo = result.seo
+        if not seo.title:
+            issues.append(t("issue.no_title"))
+        elif len(seo.title) > 60:
+            issues.append(t("issue.title_long", count=len(seo.title)))
+        if not seo.description:
+            issues.append(t("issue.no_description"))
+        elif len(seo.description) > 160:
+            issues.append(t("issue.description_long", count=len(seo.description)))
+        if seo.h1_count == 0:
+            issues.append(t("issue.no_h1"))
+        elif seo.h1_count > 1:
+            issues.append(t("issue.multiple_h1", count=seo.h1_count))
+        if not seo.has_viewport:
+            issues.append(t("issue.no_viewport"))
+        if not seo.lang:
+            issues.append(t("issue.no_lang"))
+        if not seo.canonical:
+            issues.append(t("issue.no_canonical"))
+        if "noindex" in seo.robots.lower():
+            issues.append(t("issue.noindex"))
+
+    if result.load_time_ms > 3000:
+        issues.append(t("issue.slow"))
+    if result.page_size > 2_000_000:
+        issues.append(t("issue.large"))
+
+    return issues
 
 
 def extract_http_details(headers: dict[str, str]) -> dict[str, str]:

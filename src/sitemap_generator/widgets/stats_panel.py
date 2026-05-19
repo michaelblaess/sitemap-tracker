@@ -1,11 +1,11 @@
-"""Statistik-Panel Widget - Zeigt Crawl-Fortschritt und Statistiken an."""
+"""Statistik-Panel Widget - Zeigt die URL-Detailansicht an."""
 
 from __future__ import annotations
 
 from urllib.parse import quote, urlparse, urlunparse
 
 from rich.console import Group
-from rich.rule import Rule
+from rich.panel import Panel
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
@@ -13,6 +13,7 @@ from textual.widgets import Static
 
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, SeoInfo
+from ..services.page_analysis import detect_issues
 
 
 def _sanitize_url(url: str) -> str:
@@ -131,6 +132,26 @@ class StatsPanel(VerticalScroll):
             line.append(value)
         return line
 
+    @staticmethod
+    def _panel(title: str, body: list, border_style: str = "grey37") -> Panel:
+        """Baut ein bordiertes Panel mit linksbuendigem Titel.
+
+        Args:
+            title: Der Panel-Titel.
+            body: Die Renderables im Panel.
+            border_style: Rich-Style fuer den Rahmen.
+
+        Returns:
+            Das fertige Panel.
+        """
+        return Panel(
+            Group(*body),
+            title=f" {title} ",
+            title_align="left",
+            border_style=border_style,
+            padding=(0, 1),
+        )
+
     def _seo_lines(self, seo: SeoInfo) -> list[Text]:
         """Baut die SEO-Detailzeilen.
 
@@ -160,110 +181,89 @@ class StatsPanel(VerticalScroll):
             lines.append(self._detail_line(t("detail.seo_og"), ", ".join(seo.og_tags)))
         return lines
 
+    def _page_panel(self, result: CrawlResult) -> Panel:
+        """Baut das Panel mit den Basis-Infos der Seite."""
+        safe_url = _sanitize_url(result.url)
+        lines = [
+            self._detail_line(t("detail.url"), safe_url, "bold", link_url=safe_url),
+            self._detail_line(t("detail.status"), f"{result.status_icon} {result.status.value}"),
+        ]
+        if result.redirect_url:
+            safe_redirect = _sanitize_url(result.redirect_url)
+            lines.append(self._detail_line(t("detail.redirect"), safe_redirect, link_url=safe_redirect))
+        lines.append(
+            self._detail_line(t("detail.http"), str(result.http_status_code) if result.http_status_code else "-")
+        )
+        lines.append(self._detail_line(t("detail.depth"), str(result.depth)))
+        lines.append(self._detail_line(t("detail.links"), str(result.links_found)))
+        lines.append(self._detail_line(t("detail.load_time"), _format_load_time(result.load_time_ms)))
+        lines.append(self._detail_line(t("detail.size"), _format_size(result.page_size)))
+        form_value = t("detail.form_yes") if result.has_form else t("detail.form_no")
+        lines.append(self._detail_line(t("detail.form"), form_value, "green" if result.has_form else "dim"))
+        if result.content_type:
+            lines.append(self._detail_line(t("detail.content_type"), result.content_type))
+        if result.last_modified:
+            lines.append(self._detail_line(t("detail.last_modified"), result.last_modified))
+        if result.parent_url:
+            safe_parent = _sanitize_url(result.parent_url)
+            lines.append(self._detail_line(t("detail.parent"), safe_parent, link_url=safe_parent))
+        if result.error_message:
+            lines.append(self._detail_line(t("detail.error"), result.error_message, "red"))
+        return self._panel(t("detail.page_heading"), lines)
+
+    def _issues_panel(self, result: CrawlResult) -> Panel:
+        """Baut das Panel mit den erkannten Problemen (gruen wenn keine)."""
+        issues = detect_issues(result)
+        if issues:
+            body: list = [Text(f"  • {issue}", style="yellow") for issue in issues]
+            return self._panel(t("detail.issues_heading"), body, border_style="red")
+        ok_body: list = [Text(f"  {t('issue.none')}", style="green")]
+        return self._panel(t("detail.issues_heading"), ok_body, border_style="green")
+
+    def _referring_panel(self, result: CrawlResult) -> Panel:
+        """Baut das Panel mit den verweisenden Seiten (fuer 4xx/5xx)."""
+        ref_lines: list = []
+        for ref in result.referring_pages:
+            link_text = ref.get("link_text", "").strip() or "Link"
+            ref_url = _sanitize_url(ref.get("url", ""))
+            ref_line = Text(overflow="fold")
+            ref_line.append(f'  "{link_text}" → ')
+            ref_line.append(ref_url, style=f"link {ref_url}")
+            ref_lines.append(ref_line)
+        return self._panel(t("detail.referring_pages"), ref_lines)
+
     def show_url_detail(self, result: CrawlResult) -> None:
         """Zeigt Detail-Infos zur markierten URL.
+
+        Jeder thematische Block (Seite, Probleme, Tech-Stack, SEO,
+        HTTP-Header, verweisende Seiten) ist ein eigenes bordiertes Panel.
 
         Args:
             result: Das CrawlResult der markierten URL.
         """
         self._selected_result = result
 
-        # Separator zwischen Stats und URL-Detail
-        renderables: list = [Rule(style="dim")]
+        panels: list = [self._page_panel(result), self._issues_panel(result)]
 
-        # Einzelne Text-Zeilen statt Table: URLs werden korrekt umgebrochen.
-        # link_url erzeugt OSC 8 Hyperlink → CTRL+Click oeffnet volle URL
-        # auch wenn der angezeigte Text auf mehrere Zeilen umbricht.
-        safe_url = _sanitize_url(result.url)
-        renderables.append(
-            self._detail_line(
-                t("detail.url"),
-                safe_url,
-                "bold",
-                link_url=safe_url,
-            )
-        )
-        renderables.append(
-            self._detail_line(
-                t("detail.status"),
-                f"{result.status_icon} {result.status.value}",
-            )
-        )
-        if result.redirect_url:
-            safe_redirect = _sanitize_url(result.redirect_url)
-            renderables.append(
-                self._detail_line(
-                    t("detail.redirect"),
-                    safe_redirect,
-                    link_url=safe_redirect,
-                )
-            )
-        renderables.append(
-            self._detail_line(
-                t("detail.http"),
-                str(result.http_status_code) if result.http_status_code else "-",
-            )
-        )
-        renderables.append(self._detail_line(t("detail.depth"), str(result.depth)))
-        renderables.append(self._detail_line(t("detail.links"), str(result.links_found)))
-        renderables.append(self._detail_line(t("detail.load_time"), _format_load_time(result.load_time_ms)))
-        renderables.append(self._detail_line(t("detail.size"), _format_size(result.page_size)))
-        form_value = t("detail.form_yes") if result.has_form else t("detail.form_no")
-        form_style = "green" if result.has_form else "dim"
-        renderables.append(self._detail_line(t("detail.form"), form_value, form_style))
-
-        if result.content_type:
-            renderables.append(self._detail_line(t("detail.content_type"), result.content_type))
-        if result.last_modified:
-            renderables.append(self._detail_line(t("detail.last_modified"), result.last_modified))
-        if result.parent_url:
-            safe_parent = _sanitize_url(result.parent_url)
-            renderables.append(
-                self._detail_line(
-                    t("detail.parent"),
-                    safe_parent,
-                    link_url=safe_parent,
-                )
-            )
-        if result.error_message:
-            renderables.append(self._detail_line(t("detail.error"), result.error_message, "red"))
-
-        # Tech-Stack
         if result.tech:
-            renderables.append(Rule(style="dim"))
-            renderables.append(self._detail_line(t("detail.tech"), ", ".join(result.tech)))
+            panels.append(self._panel(t("detail.tech"), [Text("  " + ", ".join(result.tech))]))
 
-        # SEO-/Meta-Daten
         seo_lines = self._seo_lines(result.seo)
         if seo_lines:
-            renderables.append(Rule(style="dim"))
-            renderables.append(Text(t("detail.seo_heading"), style="bold"))
-            renderables.extend(seo_lines)
+            panels.append(self._panel(t("detail.seo_heading"), seo_lines))
 
-        # HTTP-Header
         if result.response_headers:
-            renderables.append(Rule(style="dim"))
-            renderables.append(Text(t("detail.http_heading"), style="bold"))
-            for name, value in result.response_headers.items():
-                renderables.append(self._detail_line(name, value))
-
-        renderables.append(Text(t("detail.ctrl_click"), style="dim italic"))
+            http_lines = [self._detail_line(name, value) for name, value in result.response_headers.items()]
+            panels.append(self._panel(t("detail.http_heading"), http_lines))
 
         # Verweisende Seiten nur fuer 4xx/5xx Fehler anzeigen
         if result.referring_pages and result.http_status_code >= 400:
-            renderables.append(Rule(style="dim"))
-            ref_lines = [Text(t("detail.referring_pages"), style="bold")]
-            for ref in result.referring_pages:
-                link_text = ref.get("link_text", "").strip() or "Link"
-                ref_url = _sanitize_url(ref.get("url", ""))
-                ref_line = Text(overflow="fold")
-                ref_line.append(f'  "{link_text}" \u2192 ')
-                ref_line.append(ref_url, style=f"link {ref_url}")
-                ref_lines.append(ref_line)
-            renderables.extend(ref_lines)
+            panels.append(self._referring_panel(result))
+
+        panels.append(Text(t("detail.ctrl_click"), style="dim italic"))
 
         detail = self.query_one("#url-detail", Static)
-        detail.update(Group(*renderables))
+        detail.update(Group(*panels))
 
     def clear_detail(self) -> None:
         """Setzt das URL-Detail-Panel zurueck."""
