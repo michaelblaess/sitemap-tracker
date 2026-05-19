@@ -17,6 +17,7 @@ from playwright.async_api import Browser, Page, async_playwright
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, CrawlStats, PageStatus, friendly_error_message
 from ..models.robots import RobotsChecker
+from .page_analysis import detect_tech, extract_http_details, extract_seo
 
 # URL-Endungen die uebersprungen werden (keine HTML-Seiten)
 SKIP_EXTENSIONS = {
@@ -479,6 +480,8 @@ class Crawler:
         result.content_type = response.headers.get("content-type", "")
         result.last_modified = response.headers.get("last-modified", "")
         result.page_size = len(response.content)
+        norm_headers = {key.lower(): value for key, value in response.headers.items()}
+        result.response_headers = extract_http_details(norm_headers)
 
         if response.history:
             # Redirect erkannt: Original-Statuscode speichern (301/302),
@@ -518,6 +521,8 @@ class Crawler:
             base_url = url
         soup = BeautifulSoup(response.text, "lxml")
         result.has_form = bool(soup.find("form"))
+        result.tech = detect_tech(soup, norm_headers)
+        result.seo = extract_seo(soup)
         return self._extract_links(soup, base_url)
 
     async def _fetch_with_playwright(self, url: str, result: CrawlResult) -> list[tuple[str, str]]:
@@ -537,9 +542,12 @@ class Crawler:
             # Response-Handler fuer HTTP-Status
             response = await page.goto(url, wait_until="networkidle", timeout=self.timeout * 1000)
 
+            norm_headers: dict[str, str] = {}
             if response:
                 result.content_type = response.headers.get("content-type", "")
                 result.last_modified = response.headers.get("last-modified", "")
+                norm_headers = {key.lower(): value for key, value in response.headers.items()}
+                result.response_headers = extract_http_details(norm_headers)
                 with contextlib.suppress(Exception):
                     result.page_size = len(await response.body())
 
@@ -559,6 +567,12 @@ class Crawler:
 
             # Form-Erkennung im gerenderten DOM
             result.has_form = await page.evaluate("() => document.querySelectorAll('form').length > 0")
+
+            # Tech-Stack & SEO aus dem gerenderten HTML
+            with contextlib.suppress(Exception):
+                soup = BeautifulSoup(await page.content(), "lxml")
+                result.tech = detect_tech(soup, norm_headers)
+                result.seo = extract_seo(soup)
 
             # Links mit Text aus dem gerenderten DOM extrahieren
             links_data = await page.evaluate(

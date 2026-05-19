@@ -8,10 +8,11 @@ from rich.console import Group
 from rich.rule import Rule
 from rich.text import Text
 from textual.app import ComposeResult
+from textual.containers import VerticalScroll
 from textual.widgets import Static
 
 from ..i18n import t
-from ..models.crawl_result import CrawlResult
+from ..models.crawl_result import CrawlResult, SeoInfo
 
 
 def _sanitize_url(url: str) -> str:
@@ -82,8 +83,8 @@ def _format_size(num_bytes: int) -> str:
     return f"{num_bytes / (1024 * 1024):.1f}".replace(".", ",") + " MB"
 
 
-class StatsPanel(Static):
-    """Panel mit Live-Crawl-Statistiken und URL-Detail-Ansicht."""
+class StatsPanel(VerticalScroll):
+    """Panel mit URL-Detail-Ansicht (scrollbar bei langem Inhalt)."""
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
@@ -129,6 +130,35 @@ class StatsPanel(Static):
         else:
             line.append(value)
         return line
+
+    def _seo_lines(self, seo: SeoInfo) -> list[Text]:
+        """Baut die SEO-Detailzeilen.
+
+        Args:
+            seo:
+                Die SEO-Daten der Seite.
+
+        Returns:
+            Liste der Detailzeilen, leer wenn keine SEO-Daten vorliegen.
+        """
+        if not (seo.title or seo.description or seo.h1_count):
+            return []
+        title = f"{seo.title}  ({len(seo.title)})" if seo.title else "-"
+        description = f"{seo.description}  ({len(seo.description)})" if seo.description else "-"
+        viewport = t("detail.form_yes") if seo.has_viewport else t("detail.form_no")
+        lines = [
+            self._detail_line(t("detail.seo_title"), title),
+            self._detail_line(t("detail.seo_desc"), description),
+            self._detail_line(t("detail.seo_h1"), str(seo.h1_count)),
+            self._detail_line(t("detail.seo_lang"), seo.lang or "-"),
+            self._detail_line(t("detail.seo_canonical"), _sanitize_url(seo.canonical) if seo.canonical else "-"),
+            self._detail_line(t("detail.seo_viewport"), viewport),
+        ]
+        if seo.robots:
+            lines.append(self._detail_line(t("detail.seo_robots"), seo.robots))
+        if seo.og_tags:
+            lines.append(self._detail_line(t("detail.seo_og"), ", ".join(seo.og_tags)))
+        return lines
 
     def show_url_detail(self, result: CrawlResult) -> None:
         """Zeigt Detail-Infos zur markierten URL.
@@ -197,6 +227,25 @@ class StatsPanel(Static):
             )
         if result.error_message:
             renderables.append(self._detail_line(t("detail.error"), result.error_message, "red"))
+
+        # Tech-Stack
+        if result.tech:
+            renderables.append(Rule(style="dim"))
+            renderables.append(self._detail_line(t("detail.tech"), ", ".join(result.tech)))
+
+        # SEO-/Meta-Daten
+        seo_lines = self._seo_lines(result.seo)
+        if seo_lines:
+            renderables.append(Rule(style="dim"))
+            renderables.append(Text(t("detail.seo_heading"), style="bold"))
+            renderables.extend(seo_lines)
+
+        # HTTP-Header
+        if result.response_headers:
+            renderables.append(Rule(style="dim"))
+            renderables.append(Text(t("detail.http_heading"), style="bold"))
+            for name, value in result.response_headers.items():
+                renderables.append(self._detail_line(name, value))
 
         renderables.append(Text(t("detail.ctrl_click"), style="dim italic"))
 

@@ -53,6 +53,20 @@ class PageStatus(Enum):
 
 
 @dataclass
+class SeoInfo:
+    """SEO-/Meta-Daten einer gecrawlten Seite."""
+
+    title: str = ""
+    description: str = ""
+    h1_count: int = 0
+    canonical: str = ""
+    lang: str = ""
+    has_viewport: bool = False
+    robots: str = ""  # Inhalt des robots-Meta-Tags
+    og_tags: list[str] = field(default_factory=list)  # gefundene Open-Graph-Tags
+
+
+@dataclass
 class CrawlResult:
     """Ergebnis fuer eine einzelne gecrawlte URL."""
 
@@ -71,6 +85,9 @@ class CrawlResult:
     redirect_url: str = ""  # final URL after redirect(s)
     referring_pages: list[dict] = field(default_factory=list)
     # ^ [{"url": "https://...", "link_text": "Mehr erfahren"}]
+    tech: list[str] = field(default_factory=list)  # erkannte Technologien
+    response_headers: dict[str, str] = field(default_factory=dict)  # ausgewaehlte HTTP-Header
+    seo: SeoInfo = field(default_factory=SeoInfo)  # SEO-/Meta-Daten
 
     @property
     def is_error(self) -> bool:
