@@ -15,7 +15,14 @@ Seite mehr Informationen zeigen. Von Michael gewuenscht (alle vier):
 
 ## Phasen
 
-### Phase 1 - "kostenlose" Infos (kein neuer Request, keine neue Dependency)
+### Phase 1 - "kostenlose" Infos (ERLEDIGT)
+
+Umgesetzt: `services/page_analysis.py` (Tech-Stack, SEO, HTTP-Header),
+neue `CrawlResult`-Felder (`tech`, `seo`, `response_headers`), Anzeige im
+Detail-Panel, `StatsPanel` ist jetzt scrollbar. Unit-Tests in
+`tests/test_page_analysis.py`.
+
+### Phase 1 (Original-Beschreibung) - "kostenlose" Infos
 
 Alle drei aus Daten, die der Crawler ohnehin schon hat (HTML + Response).
 Neue Felder auf `CrawlResult`, befuellt im Crawler, angezeigt im Detail-Panel.
@@ -56,10 +63,10 @@ Aufwaendiger, daher getrennt:
 - DA1/Cell-Size-Query-Stolperstein beachten (textual-image vor `App.run()`
   eager importieren - siehe python-specialist-Skill).
 
-## Offene Fragen
+## Entscheidungen
 
-- Phase 1 zuerst umsetzen und ausliefern, Phase 2 danach? (empfohlen)
-- Vorschau: im httpx-Modus deaktivieren, oder Screenshots immer per
-  Playwright-Sidecar holen?
-- Tech-Stack: erstmal kleine kuratierte Liste oder eine groessere
-  Erkennungs-Datenbank (Wappalyzer-Stil)?
+- Phase 1 zuerst, Phase 2 danach - **erledigt** (Phase 1 ausgeliefert).
+- Vorschau: Screenshots werden **immer per Playwright-Sidecar** geholt -
+  der gewaehlte Crawl-Modus (httpx/Playwright) bleibt davon unberuehrt.
+- Tech-Stack: gestartet mit einer kleinen kuratierten Liste
+  (`page_analysis.py`); bei Bedarf spaeter erweiterbar.
