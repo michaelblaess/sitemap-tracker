@@ -283,7 +283,8 @@ class UrlTable(Static):
             return
         count_label.display = True
         if total == shown:
-            count_label.update(t("table.count", count=total))
+            key = "table.count_one" if total == 1 else "table.count"
+            count_label.update(t(key, count=total))
         else:
             count_label.update(t("table.count_filtered", shown=shown, total=total))
 
