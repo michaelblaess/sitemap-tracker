@@ -15,26 +15,38 @@ class CrawlHeader(InfoHeader):  # type: ignore[misc]
     redundant auch im StatsPanel standen.
     """
 
-    def __init__(self, id: str | None = None) -> None:
+    def __init__(self, id: str | None = None, render: bool = False, respect_robots: bool = True) -> None:
         """Erstellt den Crawl-Header mit allen Statistik-Items.
 
         Args:
             id:
                 Optionale Widget-ID.
+            render:
+                True fuer Playwright-Modus, False fuer httpx. Bestimmt die
+                initiale Modus-Anzeige.
+            respect_robots:
+                Ob robots.txt beachtet wird (fuer die Header-Anzeige).
         """
+        mode = t("mode.playwright") if render else t("mode.httpx_short")
         items = [
-            InfoItem("mode", t("header.mode"), "", value_align="right"),
-            InfoItem("discovered", t("stats.discovered"), "0", value_align="right"),
-            InfoItem("crawled", t("stats.crawled"), "0", value_align="right"),
-            InfoItem("queue", t("stats.queue"), "0", value_align="right"),
-            InfoItem("ok", "2xx", "0", value_style="dim", value_align="right"),
-            InfoItem("redirect", "3xx", "0", value_style="dim", value_align="right"),
-            InfoItem("notfound", "4xx", "0", value_style="dim", value_align="right"),
-            InfoItem("server", "5xx", "0", value_style="dim", value_align="right"),
-            InfoItem("skipped", t("stats.skipped"), "0", value_align="right"),
-            InfoItem("max_depth", t("stats.max_depth"), "0", value_align="right"),
-            InfoItem("duration", t("stats.duration"), "-", value_align="right"),
-            InfoItem("urls_per_sec", t("stats.urls_per_sec"), "0.0", value_align="right"),
+            InfoItem("mode", t("header.mode"), mode),
+            InfoItem(
+                "robots",
+                t("header.robots"),
+                t("log.robots_on") if respect_robots else t("log.robots_off"),
+                value_style="green" if respect_robots else "dim",
+            ),
+            InfoItem("discovered", t("stats.discovered"), "0"),
+            InfoItem("crawled", t("stats.crawled"), "0"),
+            InfoItem("queue", t("stats.queue"), "0"),
+            InfoItem("ok", "2xx", "0", value_style="dim"),
+            InfoItem("redirect", "3xx", "0", value_style="dim"),
+            InfoItem("notfound", "4xx", "0", value_style="dim"),
+            InfoItem("server", "5xx", "0", value_style="dim"),
+            InfoItem("skipped", t("stats.skipped"), "0"),
+            InfoItem("max_depth", t("stats.max_depth"), "0"),
+            InfoItem("duration", t("stats.duration"), "-"),
+            InfoItem("urls_per_sec", t("stats.urls_per_sec"), "0.0"),
         ]
         super().__init__(
             items,
@@ -43,18 +55,6 @@ class CrawlHeader(InfoHeader):  # type: ignore[misc]
             collapsible=True,
             id=id,
         )
-
-    def set_info(self, url: str, mode: str) -> None:
-        """Setzt die Basis-Info (aktuell nur den Crawl-Modus).
-
-        Args:
-            url:
-                Start-URL. Wird bereits im Terminal-Subtitle gezeigt und
-                hier nicht erneut benoetigt.
-            mode:
-                Crawl-Modus (httpx / Playwright).
-        """
-        self.set_value("mode", mode)
 
     def update_stats(self, stats: CrawlStats) -> None:
         """Aktualisiert alle Statistik-Werte.

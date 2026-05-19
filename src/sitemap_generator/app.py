@@ -142,7 +142,7 @@ class SitemapGeneratorApp(LogRouter, App):
     def compose(self) -> ComposeResult:
         """Erstellt das UI-Layout."""
         yield Header()
-        yield CrawlHeader(id="summary")
+        yield CrawlHeader(id="summary", render=self.render, respect_robots=self.respect_robots)
 
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
@@ -179,12 +179,8 @@ class SitemapGeneratorApp(LogRouter, App):
             import os
 
             filename = os.path.basename(self.sitemap_file)
-            summary = self.query_one("#summary", CrawlHeader)
-            summary.set_info(f"{t('log.file_label', filename=filename)}", mode)
             self.sub_title = filename
         elif self.start_url:
-            summary = self.query_one("#summary", CrawlHeader)
-            summary.set_info(self.start_url, mode)
             self.sub_title = self.start_url
 
         # Focus auf Tabelle
@@ -224,10 +220,6 @@ class SitemapGeneratorApp(LogRouter, App):
         self.start_url = url
         self.sub_title = url
 
-        summary = self.query_one("#summary", CrawlHeader)
-        mode = t("mode.playwright") if self.render else t("mode.httpx")
-        summary.set_info(self.start_url, mode)
-
         self.action_start_crawl()
 
     @work(exclusive=True, group="crawl")
@@ -249,11 +241,6 @@ class SitemapGeneratorApp(LogRouter, App):
                 return
             self.start_url = base_url
             self._file_seed_urls = file_urls
-
-            # UI aktualisieren mit der ermittelten Basis-URL
-            summary = self.query_one("#summary", CrawlHeader)
-            mode = t("mode.playwright") if self.render else t("mode.httpx")
-            summary.set_info(self.start_url, mode)
 
         if not self.start_url:
             # Keine URL vorhanden: per Dialog abfragen statt nur zu melden.
@@ -603,8 +590,6 @@ class SitemapGeneratorApp(LogRouter, App):
 
         # UI aktualisieren
         mode = t("mode.playwright") if self.render else t("mode.httpx")
-        summary = self.query_one("#summary", CrawlHeader)
-        summary.set_info(self.start_url, mode)
         self.sub_title = self.start_url
 
         self._write_log(
