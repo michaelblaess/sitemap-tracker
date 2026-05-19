@@ -6,13 +6,12 @@ from urllib.parse import quote, urlparse, urlunparse
 
 from rich.console import Group
 from rich.rule import Rule
-from rich.table import Table
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.widgets import Static
 
 from ..i18n import t
-from ..models.crawl_result import CrawlResult, CrawlStats
+from ..models.crawl_result import CrawlResult
 
 
 def _sanitize_url(url: str) -> str:
@@ -51,42 +50,12 @@ class StatsPanel(Static):
 
     def __init__(self, **kwargs) -> None:
         super().__init__(**kwargs)
-        self._stats = CrawlStats()
         self._selected_result: CrawlResult | None = None
 
     def compose(self) -> ComposeResult:
         """Erstellt das Panel-Layout."""
         yield Static(t("stats.ready"), id="stats-content")
         yield Static("", id="url-detail")
-
-    def update_stats(self, stats: CrawlStats) -> None:
-        """Aktualisiert die Crawl-Statistiken.
-
-        Args:
-            stats: Aktuelle CrawlStats.
-        """
-        self._stats = stats
-
-        table = Table(show_header=False, expand=True, box=None, padding=(0, 1))
-        table.add_column("Key", style="bold", width=18)
-        table.add_column("Value")
-
-        table.add_row(t("stats.discovered"), str(stats.total_discovered))
-        table.add_row(t("stats.crawled"), str(stats.total_crawled))
-        table.add_row("2xx (OK)", f"[green]{stats.total_2xx}[/green]" if stats.total_2xx else "0")
-        table.add_row("3xx (Redirect)", f"[yellow]{stats.total_3xx}[/yellow]" if stats.total_3xx else "0")
-        table.add_row("4xx (Not Found)", f"[red]{stats.total_4xx}[/red]" if stats.total_4xx else "0")
-        table.add_row("5xx (Server)", f"[red]{stats.total_5xx}[/red]" if stats.total_5xx else "0")
-        table.add_row(t("stats.skipped"), str(stats.total_skipped))
-        table.add_row(t("stats.queue"), str(stats.queue_size))
-        table.add_row(t("stats.max_depth"), str(stats.max_depth_reached))
-        table.add_row(t("stats.duration"), stats.duration_display)
-
-        if stats.urls_per_second > 0:
-            table.add_row(t("stats.urls_per_sec"), f"{stats.urls_per_second:.1f}")
-
-        content = self.query_one("#stats-content", Static)
-        content.update(table)
 
     @staticmethod
     def _detail_line(

@@ -113,6 +113,8 @@
   "detail.error": "Error",
   "detail.ctrl_click": "CTRL+click on URLs to open in browser",
   "detail.referring_pages": "Referring pages:",
+  "header.title": "Crawl stats",
+  "header.mode": "Mode",
   "summary.mode": "Mode: {mode}",
   "summary.crawled": "Crawled: [bold]{count}[/bold]",
   "table.columns.number": "#",

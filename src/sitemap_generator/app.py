@@ -25,8 +25,8 @@ from .models.sitemap_reader import discover_sitemap, load_sitemap_from_file, loa
 from .models.sitemap_writer import SitemapWriter
 from .services.crawler import Crawler
 from .services.reporter import Reporter
+from .widgets.crawl_header import CrawlHeader
 from .widgets.stats_panel import StatsPanel
-from .widgets.summary_panel import SummaryPanel
 from .widgets.url_table import UrlTable
 
 # Log-Hoehe: min/max/default (Zeilen)
@@ -142,7 +142,7 @@ class SitemapGeneratorApp(LogRouter, App):
     def compose(self) -> ComposeResult:
         """Erstellt das UI-Layout."""
         yield Header()
-        yield SummaryPanel(id="summary")
+        yield CrawlHeader(id="summary")
 
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
@@ -179,11 +179,11 @@ class SitemapGeneratorApp(LogRouter, App):
             import os
 
             filename = os.path.basename(self.sitemap_file)
-            summary = self.query_one("#summary", SummaryPanel)
+            summary = self.query_one("#summary", CrawlHeader)
             summary.set_info(f"{t('log.file_label', filename=filename)}", mode)
             self.sub_title = filename
         elif self.start_url:
-            summary = self.query_one("#summary", SummaryPanel)
+            summary = self.query_one("#summary", CrawlHeader)
             summary.set_info(self.start_url, mode)
             self.sub_title = self.start_url
 
@@ -224,7 +224,7 @@ class SitemapGeneratorApp(LogRouter, App):
         self.start_url = url
         self.sub_title = url
 
-        summary = self.query_one("#summary", SummaryPanel)
+        summary = self.query_one("#summary", CrawlHeader)
         mode = t("mode.playwright") if self.render else t("mode.httpx")
         summary.set_info(self.start_url, mode)
 
@@ -251,7 +251,7 @@ class SitemapGeneratorApp(LogRouter, App):
             self._file_seed_urls = file_urls
 
             # UI aktualisieren mit der ermittelten Basis-URL
-            summary = self.query_one("#summary", SummaryPanel)
+            summary = self.query_one("#summary", CrawlHeader)
             mode = t("mode.playwright") if self.render else t("mode.httpx")
             summary.set_info(self.start_url, mode)
 
@@ -308,14 +308,12 @@ class SitemapGeneratorApp(LogRouter, App):
         )
 
         url_table = self.query_one("#url-table", UrlTable)
-        stats_panel = self.query_one("#stats-panel", StatsPanel)
-        summary = self.query_one("#summary", SummaryPanel)
+        header = self.query_one("#summary", CrawlHeader)
 
         def on_result(result: CrawlResult) -> None:
             """Callback fuer jedes Crawl-Ergebnis."""
             url_table.update_result(result)
-            stats_panel.update_stats(self._crawler.stats)
-            summary.update_stats(self._crawler.stats)
+            header.update_stats(self._crawler.stats)
 
         def on_log(msg: str) -> None:
             """Callback fuer Log-Nachrichten."""
@@ -384,8 +382,7 @@ class SitemapGeneratorApp(LogRouter, App):
             return
 
         stats = self._crawler.stats
-        stats_panel.update_stats(stats)
-        summary.update_stats(stats)
+        header.update_stats(stats)
 
         http_200 = [r for r in self._results if r.http_status_code == 200]
         self._write_log(t("log.crawl_complete", duration=stats.duration_display))
@@ -606,7 +603,7 @@ class SitemapGeneratorApp(LogRouter, App):
 
         # UI aktualisieren
         mode = t("mode.playwright") if self.render else t("mode.httpx")
-        summary = self.query_one("#summary", SummaryPanel)
+        summary = self.query_one("#summary", CrawlHeader)
         summary.set_info(self.start_url, mode)
         self.sub_title = self.start_url
 
