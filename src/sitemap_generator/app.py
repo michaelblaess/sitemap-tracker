@@ -132,17 +132,33 @@ class SitemapGeneratorApp(LogRouter, App):
             "toggle_log": t("binding.log"),
             "show_about": t("binding.info"),
         }
+        # Tooltips fuer fortgeschrittene Befehle - werden im Footer beim
+        # Maus-Hover ueber der Taste angezeigt.
+        binding_tooltips = {
+            "jira_report": t("tooltip.jira"),
+            "save_forms": t("tooltip.forms"),
+            "sitemap_diff": t("tooltip.sitemap_diff"),
+        }
         for key, bindings_list in self._bindings.key_to_bindings.items():
             for i, binding in enumerate(bindings_list):
                 if binding.action in binding_labels:
                     self._bindings.key_to_bindings[key][i] = dataclasses.replace(
-                        binding, description=binding_labels[binding.action]
+                        binding,
+                        description=binding_labels[binding.action],
+                        tooltip=binding_tooltips.get(binding.action, ""),
                     )
 
     def compose(self) -> ComposeResult:
         """Erstellt das UI-Layout."""
         yield Header()
-        yield CrawlHeader(id="summary", render=self.render, respect_robots=self.respect_robots)
+        yield CrawlHeader(
+            id="summary",
+            render=self.render,
+            respect_robots=self.respect_robots,
+            concurrency=self.concurrency,
+            timeout=self.timeout,
+            max_depth=self.max_depth,
+        )
 
         with Horizontal(id="main-container"):
             with Vertical(id="left-panel"):
@@ -205,26 +221,39 @@ class SitemapGeneratorApp(LogRouter, App):
                 break
         self.refresh_bindings()
 
-    def _on_url_entered(self, url: str | None) -> None:
-        """Callback des URL-Dialogs.
+    def action_start_crawl(self) -> None:
+        """Bindet die c-Taste: fragt die URL ab und startet dann den Crawl.
 
-        Uebernimmt die eingegebene URL, aktualisiert die Anzeige und startet
-        den Crawl erneut. Bei Abbruch (url is None) passiert nichts.
+        Im Sitemap-Datei-Modus wird ohne Abfrage direkt gecrawlt. Sonst
+        oeffnet sich der URL-Dialog - mit der zuletzt verwendeten URL
+        vorbelegt, sodass der User sie uebernehmen ODER aendern kann.
+        """
+        if self._crawl_running:
+            self.notify(t("notify.crawl_running"), severity="warning")
+            return
+        if self.sitemap_file:
+            self._run_crawl()
+            return
+        self.push_screen(
+            UrlInputScreen(initial=self.start_url, lang=current_language()),
+            callback=self._on_url_entered,
+        )
+
+    def _on_url_entered(self, url: str | None) -> None:
+        """Callback des URL-Dialogs: uebernimmt die URL und startet den Crawl.
 
         Args:
             url: Die im Dialog eingegebene URL oder None bei Abbruch.
         """
         if url is None:
             return
-
         self.start_url = url
         self.sub_title = url
-
-        self.action_start_crawl()
+        self._run_crawl()
 
     @work(exclusive=True, group="crawl")
-    async def action_start_crawl(self) -> None:
-        """Startet den Crawl-Vorgang."""
+    async def _run_crawl(self) -> None:
+        """Fuehrt den Crawl-Vorgang aus."""
         if self._crawl_running:
             self.notify(t("notify.crawl_running"), severity="warning")
             return
@@ -243,11 +272,6 @@ class SitemapGeneratorApp(LogRouter, App):
             self._file_seed_urls = file_urls
 
         if not self.start_url:
-            # Keine URL vorhanden: per Dialog abfragen statt nur zu melden.
-            self.push_screen(
-                UrlInputScreen(lang=current_language()),
-                callback=self._on_url_entered,
-            )
             return
 
         self._crawl_running = True
@@ -296,6 +320,7 @@ class SitemapGeneratorApp(LogRouter, App):
 
         url_table = self.query_one("#url-table", UrlTable)
         header = self.query_one("#summary", CrawlHeader)
+        header.set_url(self.start_url)
 
         def on_result(result: CrawlResult) -> None:
             """Callback fuer jedes Crawl-Ergebnis."""
@@ -591,6 +616,15 @@ class SitemapGeneratorApp(LogRouter, App):
         # UI aktualisieren
         mode = t("mode.playwright") if self.render else t("mode.httpx")
         self.sub_title = self.start_url
+        header = self.query_one("#summary", CrawlHeader)
+        header.update_config(
+            self.render,
+            self.respect_robots,
+            self.concurrency,
+            self.timeout,
+            self.max_depth,
+        )
+        header.set_url(self.start_url)
 
         self._write_log(
             t(
