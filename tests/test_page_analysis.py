@@ -4,7 +4,13 @@ from __future__ import annotations
 
 from bs4 import BeautifulSoup
 
-from sitemap_generator.services.page_analysis import detect_tech, extract_http_details, extract_seo
+from sitemap_generator.models.crawl_result import CrawlResult, SeoInfo
+from sitemap_generator.services.page_analysis import (
+    detect_issues,
+    detect_tech,
+    extract_http_details,
+    extract_seo,
+)
 
 
 def _soup(html: str) -> BeautifulSoup:
@@ -68,6 +74,53 @@ class TestExtractSeo:
         assert "og:title" in og
         assert "og:image" in og
         assert "og:description" not in og
+
+
+def _clean_seo() -> SeoInfo:
+    return SeoInfo(
+        title="A short title",
+        description="A reasonable description.",
+        h1_count=1,
+        lang="de",
+        has_viewport=True,
+        canonical="https://example.com/",
+    )
+
+
+class TestDetectIssues:
+    def test_clean_page_has_no_issues(self) -> None:
+        result = CrawlResult(url="https://example.com/", content_type="text/html", seo=_clean_seo())
+        assert detect_issues(result) == []
+
+    def test_http_error(self) -> None:
+        result = CrawlResult(url="https://example.com/", content_type="text/html", http_status_code=404)
+        assert "issue.http_error" in detect_issues(result)
+
+    def test_missing_title(self) -> None:
+        seo = _clean_seo()
+        seo.title = ""
+        result = CrawlResult(url="https://example.com/", content_type="text/html", seo=seo)
+        assert "issue.no_title" in detect_issues(result)
+
+    def test_no_h1(self) -> None:
+        seo = _clean_seo()
+        seo.h1_count = 0
+        result = CrawlResult(url="https://example.com/", content_type="text/html", seo=seo)
+        assert "issue.no_h1" in detect_issues(result)
+
+    def test_slow_load(self) -> None:
+        result = CrawlResult(url="https://example.com/", content_type="text/html", seo=_clean_seo(), load_time_ms=5000)
+        assert "issue.slow" in detect_issues(result)
+
+    def test_large_page(self) -> None:
+        result = CrawlResult(
+            url="https://example.com/", content_type="text/html", seo=_clean_seo(), page_size=3_000_000
+        )
+        assert "issue.large" in detect_issues(result)
+
+    def test_non_html_skips_seo_checks(self) -> None:
+        result = CrawlResult(url="https://example.com/logo.png", content_type="image/png")
+        assert detect_issues(result) == []
 
 
 class TestExtractHttpDetails:
