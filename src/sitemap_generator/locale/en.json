@@ -274,7 +274,7 @@
   "ctxmenu.forms": "Generate forms report",
   "binding.errors_show_all": "Show all results",
   "detail.show_source": "[show source]",
-  "ctxmenu.show_source": "Show the broken link in the referring page's source",
+  "ctxmenu.show_source": "Show in referring page source",
   "source_view.title": "Source code of referring page",
   "source_view.source": "Source",
   "source_view.target": "Broken link",
