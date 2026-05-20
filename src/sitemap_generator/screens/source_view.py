@@ -9,6 +9,10 @@ standardmaessig in Textual mitkommt.
 from __future__ import annotations
 
 import contextlib
+import re
+import webbrowser
+from pathlib import Path
+from urllib.parse import urlparse
 
 from rich.console import Group, RenderableType
 from rich.syntax import Syntax
@@ -63,6 +67,9 @@ class SourceViewScreen(ModalScreen[None]):
         align: center middle;
         margin-top: 1;
     }
+    SourceViewScreen #button-row Button {
+        margin: 0 1;
+    }
     """
 
     BINDINGS = [Binding("escape", "close", "Schliessen")]
@@ -98,6 +105,9 @@ class SourceViewScreen(ModalScreen[None]):
                 yield Static(self._build_syntax(), id="src-content")
             with Horizontal(id="button-row"):
                 yield Button(t("source_view.close"), variant="primary", id="close")
+                yield Button(t("source_view.open_browser"), id="open-browser")
+                yield Button(t("source_view.copy_match"), id="copy-match")
+                yield Button(t("source_view.save_html"), id="save-html")
 
     # Theme + Highlight-Farbe — github-dark als Basis, ein warmer
     # Gold-Ton (#3a2f00) fuer die Treffer-Zeile, deutlich abgesetzt
@@ -192,8 +202,67 @@ class SourceViewScreen(ModalScreen[None]):
             scroll.scroll_to(y=target_y, animate=False)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        if event.button.id == "close":
+        bid = event.button.id
+        if bid == "close":
             self.dismiss(None)
+        elif bid == "open-browser":
+            self._open_in_browser()
+        elif bid == "copy-match":
+            self._copy_match_to_clipboard()
+        elif bid == "save-html":
+            self._save_html_to_disk()
 
     def action_close(self) -> None:
         self.dismiss(None)
+
+    # --- Aktionen ---------------------------------------------------------
+
+    def _open_in_browser(self) -> None:
+        """Oeffnet die Quell-URL im Standard-Browser."""
+        if not self._source_url:
+            return
+        with contextlib.suppress(Exception):
+            webbrowser.open(self._source_url)
+        self.app.notify(t("source_view.browser_opened"), severity="information", timeout=2)
+
+    def _copy_match_to_clipboard(self) -> None:
+        """Kopiert die Treffer-Zeile (plus ±3 Zeilen Kontext) in die Zwischenablage.
+
+        Format: kurzer Header mit Quelle und defektem Link, dann der
+        Code-Block mit der Treffer-Zeile mit ``>>`` markiert. Bereit zum
+        Pasten in ein Issue oder eine Mail.
+        """
+        lines = self._html.split("\n")
+        if self._line <= 0 or self._line > len(lines):
+            text = (
+                f"Quelle: {self._source_url}\nDefekter Link: {self._target_url}\n(Link nicht direkt im HTML gefunden)\n"
+            )
+        else:
+            idx = self._line - 1
+            start = max(0, idx - 3)
+            end = min(len(lines), idx + 4)
+            snippet_lines: list[str] = []
+            for i in range(start, end):
+                marker = ">> " if i == idx else "   "
+                snippet_lines.append(f"{marker}{i + 1:>5} | {lines[i]}")
+            text = (
+                f"Quelle: {self._source_url}\n"
+                f"Defekter Link: {self._target_url}\n"
+                f"Zeile {self._line}:\n\n" + "\n".join(snippet_lines) + "\n"
+            )
+        self.app.copy_to_clipboard(text)
+        self.app.notify(t("source_view.match_copied"), severity="information", timeout=2)
+
+    def _save_html_to_disk(self) -> None:
+        """Speichert das vollstaendige HTML als Datei im aktuellen Verzeichnis."""
+        parsed = urlparse(self._source_url)
+        host = parsed.hostname or "source"
+        slug = re.sub(r"[^a-zA-Z0-9._-]+", "_", parsed.path).strip("_") or "index"
+        filename = f"quelle_{host}_{slug}.html"
+        path = Path.cwd() / filename
+        try:
+            path.write_text(self._html, encoding="utf-8")
+        except OSError as exc:
+            self.app.notify(t("source_view.save_failed", error=str(exc)), severity="error")
+            return
+        self.app.notify(t("source_view.html_saved", path=str(path)), severity="information", timeout=4)

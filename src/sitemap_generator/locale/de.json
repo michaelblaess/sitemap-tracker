@@ -282,5 +282,12 @@
   "source_view.not_found": "Link nicht direkt im HTML gefunden — eventuell via JavaScript nachgeladen.",
   "source_view.close": "Schließen (Esc)",
   "notify.source_loading": "Lade Quell-Code …",
-  "notify.source_fetch_failed": "Quell-Code konnte nicht geladen werden: {error}"
+  "notify.source_fetch_failed": "Quell-Code konnte nicht geladen werden: {error}",
+  "source_view.open_browser": "🌐 Im Browser öffnen",
+  "source_view.copy_match": "📋 Treffer kopieren",
+  "source_view.save_html": "💾 HTML speichern",
+  "source_view.browser_opened": "Quell-URL im Browser geöffnet.",
+  "source_view.match_copied": "Treffer in Zwischenablage kopiert.",
+  "source_view.html_saved": "HTML gespeichert: {path}",
+  "source_view.save_failed": "Speichern fehlgeschlagen: {error}"
 }
