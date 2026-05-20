@@ -250,11 +250,16 @@ class StatsPanel(VerticalScroll):
                 ref_line.append_text(Text.from_markup(link_markup_fn(ref_url, ref_url), overflow="fold"))
             elif ref_url:
                 ref_line.append(ref_url, style=f"link {ref_url}")
-            if callable(source_markup_fn) and ref_url:
-                ref_line.append("   ")
-                ref_line.append_text(Text.from_markup(source_markup_fn(t("detail.show_source"), ref_url, target_url)))
             ref_lines.append(ref_line)
-        return self._panel(t("detail.referring_pages"), ref_lines)
+            if callable(source_markup_fn) and ref_url:
+                action_line = Text(overflow="fold")
+                action_line.append("      ")
+                action_line.append_text(
+                    Text.from_markup(source_markup_fn(t("detail.show_source"), ref_url, target_url))
+                )
+                ref_lines.append(action_line)
+        border = "red" if result.http_status_code >= 400 else "grey37"
+        return self._panel(t("detail.referring_pages"), ref_lines, border_style=border)
 
     def show_url_detail(self, result: CrawlResult) -> None:
         """Zeigt Detail-Infos zur markierten URL.
