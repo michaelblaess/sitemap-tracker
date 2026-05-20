@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import contextlib
 from collections import defaultdict, deque
-from urllib.parse import urlparse
+from urllib.parse import quote, unquote, urlparse, urlunparse
 
 from rich.text import Text
 from textual.app import ComposeResult
@@ -18,6 +18,26 @@ from textual.widgets import Tree
 
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, PageStatus
+
+
+def _canon(url: str) -> str:
+    """Kanonische Form einer URL fuer Set-Vergleiche.
+
+    Lowercases scheme/netloc, normalisiert Percent-Encoding und entfernt das
+    Fragment. Wird sowohl fuer Eintraege in ``_known_urls`` als auch fuer
+    Redirect-Targets benutzt, damit eine httpx-Antwort-URL und eine ueber
+    den Link-Extraktor entdeckte URL auch dann als gleich erkannt werden,
+    wenn das Encoding minimal abweicht.
+    """
+    try:
+        p = urlparse(url)
+    except Exception:
+        return url
+    scheme = p.scheme.lower()
+    netloc = p.netloc.lower()
+    path = quote(unquote(p.path), safe="/:@!$&'*+,;=-._~") or "/"
+    query = quote(unquote(p.query), safe="/:@!$&'*+,;=-._~?=")
+    return urlunparse((scheme, netloc, path, p.params, query, ""))
 
 
 class PageTree(Widget):
@@ -143,7 +163,8 @@ class PageTree(Widget):
         target = (result.redirect_url or "").split("#", 1)[0]
         if not target or target == url:
             return False
-        return target in self._url_to_result
+        target_c = _canon(target)
+        return any(_canon(u) == target_c for u in self._url_to_result)
 
     def _matches_filter(self, url: str) -> bool:
         """Substring-Match auf URL / Statuscode / Status-Name."""
@@ -221,11 +242,17 @@ class PageTree(Widget):
         while queue:
             parent_node, url = queue.popleft()
             r = self._url_to_result.get(url)
-            node = parent_node.add(self._make_label(url, r), data=url)
-            for child in self._children.get(url, []):
-                if child in visible and child not in visited:
-                    queue.append((node, child))
-                    visited.add(child)
+            # Hat dieser Knoten ueberhaupt sichtbare Kinder? Sonst kein
+            # Expand-Dreieck am Eintrag.
+            visible_children = [c for c in self._children.get(url, []) if c in visible and c not in visited]
+            node = parent_node.add(
+                self._make_label(url, r),
+                data=url,
+                allow_expand=bool(visible_children),
+            )
+            for child in visible_children:
+                queue.append((node, child))
+                visited.add(child)
 
         # Erste Ebene aufklappen — bei aktivem Filter alles aufklappen.
         if self._filter_text:
@@ -276,6 +303,25 @@ class PageTree(Widget):
         else:
             label.append(f" {path}")
         return label
+
+    # --- Auswahl im Baum -> Detail-Panel der App ----------------------
+
+    def on_tree_node_highlighted(self, event: Tree.NodeHighlighted) -> None:
+        """Reicht eine markierte URL als UrlTable.UrlHighlighted weiter.
+
+        So zeigt das rechte Detail-Panel beim Durchnavigieren im Baum
+        dieselben Informationen wie beim Cursor-Wechsel in der Tabelle.
+        """
+        url = getattr(event.node, "data", None)
+        if not isinstance(url, str):
+            return
+        result = self._url_to_result.get(url)
+        if result is None:
+            return
+        # Lazy-Import, damit page_tree nicht zyklisch von url_table abhaengt.
+        from .url_table import UrlTable
+
+        self.post_message(UrlTable.UrlHighlighted(result))
 
     # --- Bequeme Aktionen --------------------------------------------
 

@@ -55,7 +55,7 @@ class CrawlHeader(InfoHeader):  # type: ignore[misc]
             ),
             InfoItem("queue", t("stats.queue"), "0"),
             # Spalte 2: Konfiguration
-            InfoItem("concurrency", t("header.concurrency"), str(concurrency)),
+            InfoItem("concurrency", t("header.concurrency"), t("header.concurrency_value", count=concurrency)),
             InfoItem("timeout", t("header.timeout"), f"{timeout}s"),
             InfoItem("max_depth", t("stats.max_depth"), str(max_depth)),
             InfoItem("duration", t("stats.duration"), "-"),
@@ -125,7 +125,7 @@ class CrawlHeader(InfoHeader):  # type: ignore[misc]
             self._robots_text(respect_robots),
             value_style="green" if respect_robots else "dim",
         )
-        self.set_value("concurrency", str(concurrency))
+        self.set_value("concurrency", t("header.concurrency_value", count=concurrency))
         self.set_value("timeout", f"{timeout}s")
         self.set_value("max_depth", str(max_depth))
 
