@@ -1,6 +1,14 @@
 # sitemap-generator: Drei-Phasen-Plan
 
-Status: **Phase 1 erledigt** — alle sechs Items umgesetzt.
+Status: **Phase 1 erledigt** — alle sechs Items umgesetzt. Seither
+deutlich darueber hinausgegangen (v1.14.0): klickbare Links ueber das
+ClickableLinksMixin in textual-widgets, Detail-Panel-Reorg, History-Pick
+nimmt nur die URL, Cursor-Reset am Crawl-Ende, sortierbare Tabellen-
+Spalten, Datum+Groesse als Spalten, Rechtsklick-Kontextmenue mit Bulk-
+Aktionen, Footer-Sync fuer den e-Toggle, Responsible-Crawling-Hinweis
+im About, und vor allem der **Dead-Link-Quelltext-Viewer** mit
+Pygments-Highlighting + 3 Action-Buttons (Browser/Treffer-kopieren/HTML-
+speichern).
 
 ## Entscheidungen (Phase 1)
 
@@ -105,6 +113,44 @@ Format-Frage 6 unten: MHT / WARC / Ordner.
 - WARC ist der Web-Archive-Standard (genutzt von Internet Archive).
 - MHT ist alt, nur in MS-Browsern gut.
 - Ordner (HTML + Assets) ist intuitiv aber gross.
+
+### 2.7 Save-As-Dialog (cross-app, textual-widgets)
+Aktuell schreiben alle Save-Aktionen (Sitemap-XML, Fehler-JSON,
+Formular-JSON, HTML-Speichern im Quelltext-Viewer) in das CWD mit
+auto-generiertem Dateinamen. Vorschlag:
+
+- Neuer ``FileSaveAsScreen`` in textual-widgets: Pfad-Input (vorbelegt
+  mit dem Default-Namen), Speichern/Abbrechen. Erste Version OHNE
+  File-Browser — nur freie Pfad-Eingabe. Tab-Completion oder DirectoryTree
+  spaeter.
+- Ergebnis: ``str | None`` — der absolute Pfad oder ``None`` bei
+  Abbruch.
+- Alle Save-Stellen in sitemap-generator umstellen.
+
+### 2.8 Export-Dialog (statt verstreuter Footer-Bindings)
+Heute hat der Footer ``m Sitemap | g Forms report | j JIRA | x Fehler-JSON``
+— vier Tasten fuer „etwas exportieren". Konsolidieren auf **eine** Taste
+``x Export``:
+
+- ``ExportScreen``: Liste der verfuegbaren Formate (Sitemap-XML,
+  Fehler-JSON, JIRA-Tabelle, Formular-JSON, spaeter HTML-Report
+  und Screenshot-Ordner) + Pfad/Zwischenablage als Ziel.
+- Tastatur-Auswahl: 1-9 Sofort-Trigger, Enter aus der Liste.
+- Footer wird damit aufgeraeumt (drei freie Tasten — z.B. fuer ein
+  zukuenftiges Bookmarks-/Notizen-Feature).
+- Migration: alte Bindings als versteckte ``show=False``-Shortcuts
+  beibehalten, damit Muskelgedaechtnis nicht stirbt.
+
+### 2.9 Eingebaute TUI-Screenshot-Funktion
+Textuals ``App.save_screenshot()`` exportiert die aktuelle TUI als SVG.
+Nutzen:
+
+- Action ``F12`` oder ``Ctrl+Shift+S`` -> Screenshot des aktuellen
+  Zustands ins CWD (oder via Save-As-Dialog 2.7).
+- Optional: SVG -> PNG ueber ``cairosvg`` (kleine Extra-Dep), damit
+  Marketing-Pipelines, Twitter/X, README-Bilder direkt nutzbar sind.
+- Nuetzlich fuer Bug-Reports (User screenshot-t den Fehlerzustand und
+  schickt ihn).
 
 ### 2.6 Renaming
 Aktuell "sitemap-generator" — der Tool-Umfang ist deutlich groesser geworden.
