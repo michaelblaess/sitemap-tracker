@@ -548,12 +548,13 @@ class UrlTable(Static):
         if event.key in self._NAV_KEYS:
             self._auto_scroll = False
 
-    def on_click(self, event: events.Click) -> None:
-        """Rechtsklick auf eine Tabellenzeile -> Kontextmenue mit Bulk-Aktionen.
+    def on_mouse_down(self, event: events.MouseDown) -> None:
+        """Rechtsklick auf die Tabelle -> Kontextmenue mit Bulk-Aktionen.
 
-        Linksklick laesst Textual unveraendert die Zeile markieren — wir
-        kapern hier nur button=3 und nur, wenn der Klick im Bereich der
-        DataTable liegt.
+        Verwendet ``MouseDown`` statt ``Click``, weil DataTable den Click-
+        Event fuer Row-Selection selbst behandelt und nicht zuverlaessig
+        nach oben bubblen laesst. MouseDown feuert vorher und kommt am
+        Eltern-Container (UrlTable) zuverlaessig an.
         """
         if event.button != 3:
             return
