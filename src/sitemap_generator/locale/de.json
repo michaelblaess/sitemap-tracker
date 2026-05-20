@@ -174,7 +174,7 @@
   "history.col_params": "Parameter",
   "history.btn_select": "Auswählen",
   "history.btn_close": "Schließen",
-  "about.description": "Crawlt eine Website rekursiv und erzeugt eine\nXML-Sitemap. Erkennt Dead Links (4xx/5xx),\nTimeouts und Redirect-Ketten.\n\n[bold]Features:[/bold]\n  - Zwei Modi: httpx (schnell) oder Playwright (JS)\n  - Dead-Link-Erkennung mit verweisenden Seiten\n  - JIRA-Tabelle und JSON-Fehlerbericht Export\n  - Seitenbaum mit Mermaid/ASCII Export\n  - robots.txt Beachtung (umschaltbar)\n  - Crawl-History mit Wiederholung\n\n[bold]Alle Tastenkürzel sind in der Footer-Leiste\nam unteren Bildschirmrand sichtbar.[/bold]",
+  "about.description": "Crawlt eine Website rekursiv und erzeugt eine\nXML-Sitemap. Erkennt Dead Links (4xx/5xx),\nTimeouts und Redirect-Ketten.\n\n[bold]Features:[/bold]\n  - Zwei Modi: httpx (schnell) oder Playwright (JS)\n  - Dead-Link-Erkennung mit verweisenden Seiten\n  - JIRA-Tabelle und JSON-Fehlerbericht Export\n  - Eingebetteter Seitenbaum mit Filter und Sortierung\n  - robots.txt Beachtung (umschaltbar)\n  - Crawl-History mit Wiederholung\n\n[bold]Hinweis zum verantwortungsvollen Crawlen:[/bold]\nCrawlen kann je nach Umfang und Häufigkeit\nvom Betreiber als ungewöhnlicher Traffic\nwahrgenommen werden. Bitte beachte:\n  - Vorab den Betreiber informieren,\n    insbesondere bei großen Websites\n  - robots.txt respektieren (Default an)\n  - Angemessene Concurrency- und Timeout-Werte\n  - Nur für [bold]eigene Websites[/bold]\n    und autorisierte Analysen gedacht\n\n[bold]Alle Tastenkürzel sind in der Footer-Leiste\nam unteren Bildschirmrand sichtbar.[/bold]",
   "tree.root_label": "Seiten",
   "tree.no_data": "Keine Daten",
   "diff.header": "=== SITEMAP-DIFF ===",
