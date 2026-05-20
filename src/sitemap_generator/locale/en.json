@@ -174,7 +174,7 @@
   "history.col_params": "Parameters",
   "history.btn_select": "Select",
   "history.btn_close": "Close",
-  "about.description": "Crawls a website recursively and generates an\nXML sitemap. Detects dead links (4xx/5xx),\ntimeouts and redirect chains.\n\n[bold]Features:[/bold]\n  - Two modes: httpx (fast) or Playwright (JS)\n  - Dead link detection with referring pages\n  - JIRA table and JSON error report export\n  - Site tree with Mermaid/ASCII export\n  - robots.txt support (toggleable)\n  - Crawl history with replay\n\n[bold]All keybindings are visible in the footer\nbar at the bottom of the screen.[/bold]",
+  "about.description": "Crawls a website recursively and generates an\nXML sitemap. Detects dead links (4xx/5xx),\ntimeouts and redirect chains.\n\n[bold]Features:[/bold]\n  - Two modes: httpx (fast) or Playwright (JS)\n  - Dead link detection with referring pages\n  - JIRA table and JSON error report export\n  - Embedded site tree with filter and sorting\n  - robots.txt support (toggleable)\n  - Crawl history with replay\n\n[bold]Responsible crawling notice:[/bold]\nCrawling a site can look like unusual traffic\nto the site operator. Please:\n  - Inform the operator beforehand,\n    especially for larger sites\n  - Respect robots.txt (on by default)\n  - Use reasonable concurrency / timeout\n  - Use this tool only on [bold]your own sites[/bold]\n    or for authorised analyses\n\n[bold]All keybindings are visible in the footer\nbar at the bottom of the screen.[/bold]",
   "tree.root_label": "Pages",
   "tree.no_data": "No data",
   "diff.header": "=== SITEMAP DIFF ===",
