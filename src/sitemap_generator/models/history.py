@@ -35,6 +35,11 @@ class HistoryEntry:
         respect_robots: True=robots.txt beachten.
         user_agent: Custom User-Agent oder leer.
         cookies: Liste der Cookies als Dicts.
+        total_crawled: Anzahl gecrawlter URLs (nach Crawl-Ende).
+        total_2xx: Anzahl 2xx-Responses.
+        total_3xx: Anzahl 3xx-Responses (Redirects).
+        total_4xx: Anzahl 4xx-Responses.
+        total_5xx: Anzahl 5xx-Responses.
     """
 
     url: str
@@ -47,6 +52,11 @@ class HistoryEntry:
     respect_robots: bool = True
     user_agent: str = ""
     cookies: list[dict[str, str]] = field(default_factory=list)
+    total_crawled: int = 0
+    total_2xx: int = 0
+    total_3xx: int = 0
+    total_4xx: int = 0
+    total_5xx: int = 0
 
     def to_dict(self) -> dict:
         """Konvertiert den Eintrag in ein Dictionary fuer JSON.
@@ -65,6 +75,11 @@ class HistoryEntry:
             "respect_robots": self.respect_robots,
             "user_agent": self.user_agent,
             "cookies": self.cookies,
+            "total_crawled": self.total_crawled,
+            "total_2xx": self.total_2xx,
+            "total_3xx": self.total_3xx,
+            "total_4xx": self.total_4xx,
+            "total_5xx": self.total_5xx,
         }
 
     @staticmethod
@@ -88,6 +103,11 @@ class HistoryEntry:
             respect_robots=data.get("respect_robots", True),
             user_agent=data.get("user_agent", ""),
             cookies=data.get("cookies", []),
+            total_crawled=int(data.get("total_crawled", 0)),
+            total_2xx=int(data.get("total_2xx", 0)),
+            total_3xx=int(data.get("total_3xx", 0)),
+            total_4xx=int(data.get("total_4xx", 0)),
+            total_5xx=int(data.get("total_5xx", 0)),
         )
 
     def display_label(self) -> str:
@@ -98,8 +118,10 @@ class HistoryEntry:
         Returns:
             Kurzform-String fuer die Listenanzeige.
         """
-        # Datum kuerzen: nur YYYY-MM-DD HH:MM
-        date_part = self.timestamp[:16].replace("T", " ") if self.timestamp else "?"
+        # Datum culture-abhaengig formatieren (de: TT.MM.JJJJ, en: ISO)
+        from ..i18n import format_datetime
+
+        date_part = format_datetime(self.timestamp)
 
         # Hostname extrahieren
         try:
@@ -209,4 +231,36 @@ class History:
         if len(entries) > History.MAX_ENTRIES:
             entries = entries[: History.MAX_ENTRIES]
 
+        History.save(entries)
+
+    @staticmethod
+    def update_latest_stats(
+        total_crawled: int,
+        total_2xx: int,
+        total_3xx: int,
+        total_4xx: int,
+        total_5xx: int,
+    ) -> None:
+        """Aktualisiert die Statistik-Felder des juengsten Eintrags.
+
+        Wird am Ende eines Crawls aufgerufen, wenn die Stats feststehen.
+        Der zugehoerige Eintrag wurde bei Crawl-Start via `add()` an Index 0
+        gelegt; abgebrochene Crawls behalten ihre Default-Stats (0).
+
+        Args:
+            total_crawled: Gesamtzahl gecrawlter URLs.
+            total_2xx: Anzahl 2xx-Responses.
+            total_3xx: Anzahl 3xx-Responses.
+            total_4xx: Anzahl 4xx-Responses.
+            total_5xx: Anzahl 5xx-Responses.
+        """
+        entries = History.load()
+        if not entries:
+            return
+        latest = entries[0]
+        latest.total_crawled = total_crawled
+        latest.total_2xx = total_2xx
+        latest.total_3xx = total_3xx
+        latest.total_4xx = total_4xx
+        latest.total_5xx = total_5xx
         History.save(entries)

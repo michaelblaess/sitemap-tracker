@@ -14,7 +14,7 @@ from textual.containers import Horizontal, Vertical
 from textual.screen import ModalScreen
 from textual.widgets import Button, DataTable, Static
 
-from ..i18n import t
+from ..i18n import format_datetime, t
 from ..models.history import History, HistoryEntry
 
 
@@ -97,11 +97,14 @@ class HistoryScreen(ModalScreen[HistoryEntry | None]):
                     t("history.col_number"),
                     t("history.col_date"),
                     t("history.col_url"),
+                    t("history.col_crawled"),
+                    t("history.col_2xx"),
+                    t("history.col_4xx"),
                     t("history.col_params"),
                 )
                 for idx, entry in enumerate(self._entries, start=1):
-                    # Datum kuerzen
-                    date_str = entry.timestamp[:16].replace("T", " ") if entry.timestamp else "?"
+                    # Datum culture-abhaengig formatieren (de: TT.MM.JJJJ, en: ISO)
+                    date_str = format_datetime(entry.timestamp)
 
                     # Hostname extrahieren
                     try:
@@ -128,7 +131,12 @@ class HistoryScreen(ModalScreen[HistoryEntry | None]):
                         params.append("--user-agent ...")
                     param_str = "  ".join(params) if params else "-"
 
-                    table.add_row(str(idx), date_str, host, param_str, key=str(idx))
+                    # Statistiken (0 oder fehlend → "-")
+                    crawled_str = str(entry.total_crawled) if entry.total_crawled else "-"
+                    ok_str = str(entry.total_2xx) if entry.total_2xx else "-"
+                    err_str = str(entry.total_4xx) if entry.total_4xx else "-"
+
+                    table.add_row(str(idx), date_str, host, crawled_str, ok_str, err_str, param_str, key=str(idx))
 
                 yield table
 

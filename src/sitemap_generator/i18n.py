@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+from datetime import datetime
 from importlib import resources
 
 logger = logging.getLogger(__name__)
@@ -48,3 +49,52 @@ def t(key: str, **kwargs: object) -> str:
         except (KeyError, IndexError):
             return template
     return template
+
+
+def format_datetime(timestamp: str, lang: str | None = None) -> str:
+    """Formatiert einen ISO-Timestamp culture-abhaengig (Datum + Uhrzeit).
+
+    Regel fuer das Projekt:
+    - DE: ``dd.MM.yyyy HH:mm`` (z.B. ``19.05.2026 20:58``)
+    - EN / Fallback: ISO ``yyyy-MM-dd HH:mm``
+
+    Args:
+        timestamp:
+            Zeitstempel als ISO-String (z.B. ``2026-05-19T20:58:00``). Leer
+            oder ungueltig fuehrt zu ``"?"``.
+        lang:
+            Sprachkuerzel. Default: die aktuell geladene Sprache.
+
+    Returns:
+        Formatierter Datum/Zeit-String.
+    """
+    if not timestamp:
+        return "?"
+    if lang is None:
+        lang = _current_lang
+    try:
+        dt = datetime.fromisoformat(timestamp)
+    except (ValueError, TypeError):
+        # Robust gegen schlecht gespeicherte Werte: nehmen was geht.
+        return timestamp[:16].replace("T", " ")
+    if lang == "de":
+        return dt.strftime("%d.%m.%Y %H:%M")
+    return dt.strftime("%Y-%m-%d %H:%M")
+
+
+def format_date(timestamp: str, lang: str | None = None) -> str:
+    """Formatiert einen ISO-Timestamp culture-abhaengig (nur Datum).
+
+    DE: ``dd.MM.yyyy``, EN/Fallback: ISO ``yyyy-MM-dd``.
+    """
+    if not timestamp:
+        return "?"
+    if lang is None:
+        lang = _current_lang
+    try:
+        dt = datetime.fromisoformat(timestamp)
+    except (ValueError, TypeError):
+        return timestamp[:10]
+    if lang == "de":
+        return dt.strftime("%d.%m.%Y")
+    return dt.strftime("%Y-%m-%d")
