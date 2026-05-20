@@ -1,19 +1,21 @@
 """Modal-Dialog, der den HTML-Quellcode einer verweisenden Seite zeigt.
 
-Springt zur Zeile, an der der defekte Link im HTML auftaucht — read-only,
-mit Zeilennummern und (sofern Tree-Sitter-HTML verfuegbar) Syntax-
-Highlighting.
+Rendert das HTML ueber Rich's ``Syntax`` (Pygments) mit Zeilennummern und
+hervorgehobener Fundstelle. Read-only — bewusst nicht editierbar; die
+TextArea-Loesung scheiterte am tree-sitter-html-Build, der nicht
+standardmaessig in Textual mitkommt.
 """
 
 from __future__ import annotations
 
 import contextlib
 
+from rich.syntax import Syntax
 from textual.app import ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, Vertical
+from textual.containers import Horizontal, ScrollableContainer, Vertical
 from textual.screen import ModalScreen
-from textual.widgets import Button, Static, TextArea
+from textual.widgets import Button, Static
 
 from ..i18n import t
 
@@ -46,13 +48,14 @@ class SourceViewScreen(ModalScreen[None]):
         color: $text-muted;
         margin-bottom: 1;
     }
-    SourceViewScreen TextArea {
+    SourceViewScreen #src-scroll {
         height: 1fr;
+        border: solid $surface-lighten-2;
     }
-    /* Sichtbare Markierung fuer den gefundenen Treffer. */
-    SourceViewScreen TextArea > .text-area--selection {
-        background: $warning 80%;
-        color: $background;
+    SourceViewScreen #src-content {
+        height: auto;
+        width: auto;
+        padding: 0 1;
     }
     SourceViewScreen #button-row {
         height: 3;
@@ -90,47 +93,43 @@ class SourceViewScreen(ModalScreen[None]):
             else:
                 info += f"\n{t('source_view.not_found')}"
             yield Static(info, id="source-info")
-            # Tree-Sitter-HTML ist optional — bei Fehlen faellt TextArea
-            # still auf no-highlight zurueck und zeigt nur Zeilennummern.
-            try:
-                ta = TextArea.code_editor(
-                    self._html,
-                    language="html",
-                    read_only=True,
-                    show_line_numbers=True,
-                )
-            except Exception:
-                ta = TextArea(self._html, read_only=True, show_line_numbers=True)
-            yield ta
+            with ScrollableContainer(id="src-scroll"):
+                yield Static(self._build_syntax(), id="src-content")
             with Horizontal(id="button-row"):
                 yield Button(t("source_view.close"), variant="primary", id="close")
 
+    def _build_syntax(self) -> Syntax:
+        """Baut die ``Syntax``-Renderable mit Pygments-Highlight + Fundstelle.
+
+        ``highlight_lines`` markiert die Treffer-Zeile mit dem Theme-Background
+        — exakt das, was wir wollen, um den User direkt auf die richtige
+        Stelle zu lenken.
+        """
+        highlight = {self._line} if self._line > 0 else set()
+        return Syntax(
+            self._html,
+            "html",
+            line_numbers=True,
+            highlight_lines=highlight,
+            theme="monokai",
+            word_wrap=False,
+            indent_guides=False,
+            background_color="default",
+        )
+
     def on_mount(self) -> None:
-        # Cursor und Scroll-Position auf den Treffer setzen — verzoegert,
-        # damit das erste Layout der TextArea (Breite/Hoehe) abgeschlossen
-        # ist. Sonst scrollt der erste Aufruf horizontal ans Zeilenende,
-        # weil TextArea ihre Sichtbarkeitsregion noch nicht kennt.
+        # Scroll-Position auf die Fundstelle — verzoegert, bis das erste
+        # Layout fertig ist; sonst kennt der ScrollableContainer seine
+        # Sichtbarkeitsregion noch nicht.
         if self._line > 0:
-            self.call_after_refresh(self._goto_match)
+            self.call_after_refresh(self._scroll_to_match)
 
-    def _goto_match(self) -> None:
-        """Setzt Selection auf den Treffer und scrollt ihn ins sichtbare Feld."""
+    def _scroll_to_match(self) -> None:
+        """Scrollt so, dass die Treffer-Zeile zentriert sichtbar wird."""
         with contextlib.suppress(Exception):
-            from textual.widgets.text_area import Selection
-
-            ta = self.query_one(TextArea)
-            col = max(0, self._column - 1)
-            start = (self._line - 1, col)
-            if self._length > 0:
-                end = (self._line - 1, col + self._length)
-                ta.selection = Selection(start=start, end=end)
-            else:
-                ta.cursor_location = start
-            # Erst horizontal auf 0 — sonst beginnt die Zeile evtl. rechts
-            # vom Treffer und der Scroll-into-view bleibt am Zeilenende.
-            ta.scroll_to(x=0, animate=False)
-            ta.scroll_cursor_visible(center=True, animate=False)
-            ta.focus()
+            scroll = self.query_one("#src-scroll", ScrollableContainer)
+            target_y = max(0, self._line - 5)
+            scroll.scroll_to(y=target_y, animate=False)
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "close":
