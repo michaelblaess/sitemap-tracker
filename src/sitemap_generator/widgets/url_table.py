@@ -11,9 +11,41 @@ from textual.message import Message
 from textual.widgets import DataTable, Input, Static, TabbedContent, TabPane
 from textual_widgets import SearchInputWithHistory
 
-from ..i18n import t
+from ..i18n import current_language, t
 from ..models.crawl_result import CrawlResult, PageStatus
 from .page_tree import PageTree, _canon
+
+
+def _format_size(num_bytes: int) -> str:
+    """Byte-Groesse kompakt (B/KB/MB), de-DE-Komma."""
+    if num_bytes <= 0:
+        return "-"
+    if num_bytes < 1024:
+        return f"{num_bytes} B"
+    if num_bytes < 1024 * 1024:
+        return f"{num_bytes / 1024:.1f}".replace(".", ",") + " KB"
+    return f"{num_bytes / (1024 * 1024):.1f}".replace(".", ",") + " MB"
+
+
+def _format_last_modified(raw: str) -> str:
+    """Last-Modified-HTTP-Header kompakt formatieren (DE: TT.MM.JJJJ, EN: ISO).
+
+    Akzeptiert das RFC-1123-Format (z.B. ``Sat, 16 May 2026 15:46:36 GMT``)
+    und gibt nur das Datum zurueck — die Uhrzeit braucht es in der
+    Tabelle nicht.
+    """
+    if not raw:
+        return "-"
+    from email.utils import parsedate_to_datetime
+
+    try:
+        dt = parsedate_to_datetime(raw)
+    except (TypeError, ValueError):
+        return raw[:10]
+    if current_language() == "de":
+        return dt.strftime("%d.%m.%Y")
+    return dt.strftime("%Y-%m-%d")
+
 
 # Spinner-Frames fuer CRAWLING-Status
 SPINNER_FRAMES = [">  ", ">> ", ">>>", " >>", "  >", "   "]
@@ -99,6 +131,8 @@ class UrlTable(Static):
             t("table.columns.links"),
             t("table.columns.form"),
             t("table.columns.time"),
+            t("table.columns.size"),
+            t("table.columns.date"),
             t("table.columns.url"),
         )
         self._spinner_timer = self.set_interval(0.3, self._tick_spinner)
@@ -268,7 +302,9 @@ class UrlTable(Static):
         table.update_cell(
             row_key, self._col_keys[6], f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-"
         )
-        table.update_cell(row_key, self._col_keys[7], self._url_cell(result))
+        table.update_cell(row_key, self._col_keys[7], _format_size(result.page_size))
+        table.update_cell(row_key, self._col_keys[8], _format_last_modified(result.last_modified))
+        table.update_cell(row_key, self._col_keys[9], self._url_cell(result))
 
     def _refresh_table(self) -> None:
         """Baut die DataTable komplett neu auf (clear + rebuild).
@@ -294,6 +330,8 @@ class UrlTable(Static):
                 str(result.links_found) if result.links_found else "-",
                 form_cell,
                 f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-",
+                _format_size(result.page_size),
+                _format_last_modified(result.last_modified),
                 url_cell,
                 key=result.url,
             )
@@ -429,6 +467,8 @@ class UrlTable(Static):
                 str(result.links_found) if result.links_found else "-",
                 form_cell,
                 f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-",
+                _format_size(result.page_size),
+                _format_last_modified(result.last_modified),
                 self._url_cell(result),
                 key=result.url,
             )
