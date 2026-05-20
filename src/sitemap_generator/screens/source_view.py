@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import contextlib
 
+from rich.console import Group, RenderableType
 from rich.syntax import Syntax
 from textual.app import ComposeResult
 from textual.binding import Binding
@@ -98,24 +99,83 @@ class SourceViewScreen(ModalScreen[None]):
             with Horizontal(id="button-row"):
                 yield Button(t("source_view.close"), variant="primary", id="close")
 
-    def _build_syntax(self) -> Syntax:
-        """Baut die ``Syntax``-Renderable mit Pygments-Highlight + Fundstelle.
+    # Theme + Highlight-Farbe — github-dark als Basis, ein warmer
+    # Gold-Ton (#3a2f00) fuer die Treffer-Zeile, deutlich abgesetzt
+    # vom Theme-Background.
+    _THEME = "github-dark"
+    _HIGHLIGHT_BG = "#3a2f00"
 
-        ``highlight_lines`` markiert die Treffer-Zeile mit dem Theme-Background
-        — exakt das, was wir wollen, um den User direkt auf die richtige
-        Stelle zu lenken.
+    def _build_syntax(self) -> RenderableType:
+        """Baut die Code-Anzeige mit Pygments-Highlight + sichtbarer Fundstelle.
+
+        Rich's ``highlight_lines`` zeichnet nur einen schmalen ``>``-Marker
+        am linken Rand — kein vollflaechiges Background-Highlight. Daher
+        rendern wir die Treffer-Zeile in einem eigenen ``Syntax``-Block mit
+        explizitem ``background_color``, eingebettet zwischen den ``Syntax``-
+        Bloecken fuer Code davor und danach. ``start_line=`` haelt die
+        Zeilennummerierung durchgaengig.
         """
-        highlight = {self._line} if self._line > 0 else set()
-        return Syntax(
-            self._html,
-            "html",
-            line_numbers=True,
-            highlight_lines=highlight,
-            theme="monokai",
-            word_wrap=False,
-            indent_guides=False,
-            background_color="default",
+        if self._line <= 0:
+            return Syntax(
+                self._html,
+                "html",
+                line_numbers=True,
+                theme=self._THEME,
+                word_wrap=False,
+                indent_guides=False,
+            )
+        lines = self._html.split("\n")
+        idx = self._line - 1
+        if idx >= len(lines):
+            return Syntax(
+                self._html,
+                "html",
+                line_numbers=True,
+                theme=self._THEME,
+                word_wrap=False,
+                indent_guides=False,
+            )
+        before = "\n".join(lines[:idx])
+        target = lines[idx]
+        after = "\n".join(lines[idx + 1 :])
+        blocks: list[RenderableType] = []
+        if before:
+            blocks.append(
+                Syntax(
+                    before,
+                    "html",
+                    line_numbers=True,
+                    theme=self._THEME,
+                    word_wrap=False,
+                    indent_guides=False,
+                    start_line=1,
+                )
+            )
+        blocks.append(
+            Syntax(
+                target,
+                "html",
+                line_numbers=True,
+                theme=self._THEME,
+                word_wrap=False,
+                indent_guides=False,
+                start_line=self._line,
+                background_color=self._HIGHLIGHT_BG,
+            )
         )
+        if after:
+            blocks.append(
+                Syntax(
+                    after,
+                    "html",
+                    line_numbers=True,
+                    theme=self._THEME,
+                    word_wrap=False,
+                    indent_guides=False,
+                    start_line=self._line + 1,
+                )
+            )
+        return Group(*blocks)
 
     def on_mount(self) -> None:
         # Scroll-Position auf die Fundstelle — verzoegert, bis das erste
