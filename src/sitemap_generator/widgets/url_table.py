@@ -13,7 +13,7 @@ from textual_widgets import SearchInputWithHistory
 
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, PageStatus
-from .page_tree import PageTree
+from .page_tree import PageTree, _canon
 
 # Spinner-Frames fuer CRAWLING-Status
 SPINNER_FRAMES = [">  ", ">> ", ">>>", " >>", "  >", "   "]
@@ -214,7 +214,7 @@ class UrlTable(Static):
         target = (result.redirect_url or "").split("#", 1)[0]
         if not target or target == result.url:
             return False
-        return target in self._known_urls
+        return _canon(target) in self._known_urls
 
     def _matches_filter(self, result: CrawlResult) -> bool:
         """Prueft ob ein Ergebnis dem aktuellen Filter entspricht.
@@ -370,7 +370,7 @@ class UrlTable(Static):
             results: Liste der CrawlResults.
         """
         self._results = results
-        self._known_urls = {r.url for r in results}
+        self._known_urls = {_canon(r.url) for r in results}
         self._auto_scroll = True
         self._auto_scroll_row = -1
         self._apply_filter()
@@ -389,12 +389,13 @@ class UrlTable(Static):
         is_new = result not in self._results
         if is_new:
             self._results.append(result)
-            self._known_urls.add(result.url)
+            self._known_urls.add(_canon(result.url))
             # Wenn dieses neue Ergebnis Ziel eines bereits angezeigten 3xx-
             # Redirects ist, muss die Tabelle neu gefiltert werden, damit
             # der Duplikat-Eintrag verschwindet.
+            this_canon = _canon(result.url)
             if result.status != PageStatus.REDIRECT and any(
-                r.status == PageStatus.REDIRECT and (r.redirect_url or "").split("#", 1)[0] == result.url
+                r.status == PageStatus.REDIRECT and _canon((r.redirect_url or "").split("#", 1)[0]) == this_canon
                 for r in self._filtered
             ):
                 self._filtered = [r for r in self._results if self._matches_filter(r)]
