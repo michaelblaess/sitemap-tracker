@@ -29,6 +29,9 @@ class SourceLocation(NamedTuple):
     column: int
     """1-basierte Spalte mit dem Treffer. ``0`` wenn nicht gefunden."""
 
+    length: int
+    """Laenge des gematchten Substrings im HTML. ``0`` wenn nicht gefunden."""
+
 
 async def fetch_and_locate(
     source_url: str,
@@ -74,20 +77,15 @@ async def fetch_and_locate(
         response = await client.get(source_url)
         html = response.text
 
-    line, col = _locate(html, target_url)
-    return SourceLocation(html=html, line=line, column=col)
+    line, col, length = _locate(html, target_url)
+    return SourceLocation(html=html, line=line, column=col, length=length)
 
 
-def _locate(html: str, target_url: str) -> tuple[int, int]:
+def _locate(html: str, target_url: str) -> tuple[int, int, int]:
     """Sucht den ersten Treffer einer Reihe von URL-Varianten im HTML.
 
-    Varianten:
-    - Originale URL
-    - Ohne Query (?...)
-    - Ohne Fragment (#...)
-    - Ohne Query + Fragment
-    - Nur Pfad (ohne scheme://host)
-    - URL-dekodiert (%20 -> Leerzeichen)
+    Varianten in dieser Reihenfolge: Original, ohne Fragment, ohne Query,
+    nur Pfad, URL-dekodiert.
 
     Args:
         html:
@@ -96,10 +94,12 @@ def _locate(html: str, target_url: str) -> tuple[int, int]:
             Die zu suchende URL.
 
     Returns:
-        ``(line, column)`` 1-basiert; ``(0, 0)`` wenn nichts passt.
+        ``(line, column, length)`` — 1-basiert fuer Zeile/Spalte,
+        ``length`` = Laenge des gematchten Substrings. ``(0, 0, 0)`` wenn
+        nichts passt.
     """
     if not target_url:
-        return (0, 0)
+        return (0, 0, 0)
 
     candidates = [target_url]
     if "#" in target_url:
@@ -128,5 +128,5 @@ def _locate(html: str, target_url: str) -> tuple[int, int]:
         line = html.count("\n", 0, idx) + 1
         last_nl = html.rfind("\n", 0, idx)
         column = idx - last_nl if last_nl >= 0 else idx + 1
-        return (line, column)
-    return (0, 0)
+        return (line, column, len(cand))
+    return (0, 0, 0)

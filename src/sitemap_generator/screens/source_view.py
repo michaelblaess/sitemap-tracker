@@ -65,10 +65,14 @@ class SourceViewScreen(ModalScreen[None]):
         line: int,
         source_url: str,
         target_url: str,
+        column: int = 0,
+        length: int = 0,
     ) -> None:
         super().__init__()
         self._html = html
         self._line = line
+        self._column = column
+        self._length = length
         self._source_url = source_url
         self._target_url = target_url
 
@@ -100,7 +104,14 @@ class SourceViewScreen(ModalScreen[None]):
         if self._line > 0:
             with contextlib.suppress(Exception):
                 ta = self.query_one(TextArea)
-                ta.cursor_location = (self._line - 1, 0)
+                col = max(0, self._column - 1)
+                start = (self._line - 1, col)
+                if self._length > 0:
+                    # Treffer als Selektion markieren — visuell hervorgehoben.
+                    end = (self._line - 1, col + self._length)
+                    ta.selection = ta.selection.__class__(start=start, end=end)
+                else:
+                    ta.cursor_location = start
                 ta.scroll_cursor_visible(center=True, animate=False)
                 ta.focus()
 

@@ -867,6 +867,8 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
             SourceViewScreen(
                 html=loc.html,
                 line=loc.line,
+                column=loc.column,
+                length=loc.length,
                 source_url=source_url,
                 target_url=target_url,
             )
