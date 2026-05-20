@@ -5,6 +5,10 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import dataclasses
+import os
+import platform
+import subprocess
+import webbrowser
 from datetime import datetime
 from urllib.parse import urlparse
 
@@ -113,6 +117,10 @@ class SitemapGeneratorApp(LogRouter, App):
         self._stats_timer = None
         self.show_preview: bool = self._settings.show_preview
         self._preview_service: PreviewService | None = None
+        # Klick-Registry fuer Action-Markup-Links — ohne CTRL klickbar,
+        # mit Hover-Highlight. Map: ID -> URL/Pfad.
+        self._link_registry: dict[int, str] = {}
+        self._link_counter: int = 0
 
         # Uebersetzte Binding-Labels setzen
         self._init_bindings()
@@ -519,7 +527,7 @@ class SitemapGeneratorApp(LogRouter, App):
         )
 
         Reporter.save_error_report(self._results, stats, self.start_url, filename)
-        self._write_log(t("log.error_report_written", filename=filename, count=len(errors)))
+        self._write_log(t("log.error_report_written", filename=self._link(filename, filename), count=len(errors)))
         self.notify(t("notify.error_report", filename=filename, count=len(errors)))
 
     def action_save_sitemap(self) -> None:
@@ -552,7 +560,7 @@ class SitemapGeneratorApp(LogRouter, App):
 
         http_200 = [r for r in self._results if r.http_status_code == 200]
         for path in written:
-            self._write_log(t("log.sitemap_written", path=path))
+            self._write_log(t("log.sitemap_written", path=self._link(path, path)))
 
         self.notify(t("notify.sitemap_saved", path=written[0], count=len(http_200)))
 
@@ -774,6 +782,55 @@ class SitemapGeneratorApp(LogRouter, App):
             )
         )
 
+    # --- Klickbare Links im Log und in Detail-Panels ---------------------
+    #
+    # Pattern aus death-proof: Textual-Action-Markup [@click=app.open_link({id})]
+    # ist ohne CTRL klickbar und hat einen automatischen Hover-Highlight.
+    # Aktions-Parameter sind nur einfache Tokens — daher die Indirektion
+    # ueber eine ID (URLs mit Sonderzeichen wuerden das Markup brechen).
+
+    def _link(self, text: str, target: str) -> str:
+        """Erzeugt Textual-Markup fuer einen klickbaren Link auf eine URL oder einen Pfad.
+
+        Args:
+            text:
+                Sichtbarer Linktext.
+            target:
+                URL (http/https) oder lokaler Dateipfad.
+
+        Returns:
+            Markup-String, der in `_write_log()` oder als Static-Inhalt
+            verwendet werden kann.
+        """
+        if not target:
+            return text
+        self._link_counter += 1
+        link_id = self._link_counter
+        self._link_registry[link_id] = target
+        return f"[@click=app.open_link({link_id})]{text}[/]"
+
+    def action_open_link(self, link_id: str) -> None:
+        """Oeffnet das zur ID registrierte URL/Dateiziel im Standard-Programm."""
+        try:
+            key = int(link_id)
+        except (TypeError, ValueError):
+            return
+        target = self._link_registry.get(key, "")
+        if not target:
+            return
+        if target.startswith(("http://", "https://")):
+            with contextlib.suppress(Exception):
+                webbrowser.open(target)
+            return
+        # Lokaler Pfad
+        with contextlib.suppress(Exception):
+            if platform.system() == "Windows":
+                os.startfile(target)  # type: ignore[attr-defined]
+            elif platform.system() == "Darwin":
+                subprocess.Popen(["open", target])
+            else:
+                subprocess.Popen(["xdg-open", target])
+
     def action_jira_report(self) -> None:
         """Kopiert eine JIRA-Wiki-Tabelle mit Fehlern in die Zwischenablage."""
         if not self._results:
@@ -809,7 +866,7 @@ class SitemapGeneratorApp(LogRouter, App):
         filename = f"formulare_{hostname}_{timestamp}.json"
 
         Reporter.save_forms_report(self._results, self.start_url, filename)
-        self._write_log(t("log.forms_written", filename=filename, count=len(form_pages)))
+        self._write_log(t("log.forms_written", filename=self._link(filename, filename), count=len(form_pages)))
         self.notify(t("notify.forms_saved", filename=filename, count=len(form_pages)))
 
     def action_sitemap_diff(self) -> None:
@@ -961,11 +1018,20 @@ class SitemapGeneratorApp(LogRouter, App):
 
         self.exit()
 
+    # http(s)-URLs in Log-Zeilen: nur dann ersetzen, wenn sie NICHT bereits
+    # in einem `[link ...]`- oder `[@click=...]`-Markup-Block stehen.
+    _URL_LOG_RE = __import__("re").compile(r"(?<!=)(?<!\])(?<!\")(https?://[^\s\[\]<>\"']+)")
+
     def _write_log(self, line: str) -> None:
         """Schreibt eine Zeile ins Log-Panel.
+
+        Rohe URLs in der Nachricht werden automatisch zu klickbaren Links
+        (ohne CTRL, mit Hover-Highlight). Bereits gelinkte URLs bleiben
+        unberuehrt.
 
         Args:
             line: Log-Nachricht (kann Rich-Markup enthalten).
         """
+        line = self._URL_LOG_RE.sub(lambda m: self._link(m.group(1), m.group(1)), line)
         with contextlib.suppress(Exception):
             self.query_one("#crawl-log", LogPanel).write_log(line)
