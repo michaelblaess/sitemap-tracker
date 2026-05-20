@@ -432,8 +432,10 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
         # Baum-Tab am Ende des Crawls einmal aufbauen
         url_table.rebuild_tree(self.start_url)
 
-        # Detailansicht nachziehen — waehrend des Crawls bewusst aus, damit
-        # die Cursor-Bewegung im Auto-Scroll keine Re-Renders kostet.
+        # Cursor auf die Root-Zeile setzen — sonst bleibt er auf der zuletzt
+        # gecrawlten URL (Auto-Scroll) stehen. Anschliessend Detailansicht
+        # nachziehen (waehrend des Crawls bewusst aus).
+        url_table.move_cursor_to_top()
         self._refresh_detail_for_cursor()
 
         # Statistiken in den juengsten History-Eintrag nachtragen
