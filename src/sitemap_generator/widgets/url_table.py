@@ -568,14 +568,24 @@ class UrlTable(Static):
             return
         event.stop()
         toggle_label = t("ctxmenu.errors_off" if self._show_only_errors else "ctxmenu.errors_on")
-        items = [
-            ContextMenuItem("toggle_errors", toggle_label),
-            ContextMenuItem.separator(),
-            ContextMenuItem("save_sitemap", t("ctxmenu.save_sitemap")),
-            ContextMenuItem("save_errors", t("ctxmenu.save_errors")),
-            ContextMenuItem("jira", t("ctxmenu.jira")),
-            ContextMenuItem("forms", t("ctxmenu.forms")),
-        ]
+        items: list[ContextMenuItem] = []
+        # Quell-Code-Anzeige zuerst — nur fuer 4xx/5xx-Zeilen mit
+        # bekannten verweisenden Seiten. Stoppt nicht die Bulk-Aktionen,
+        # nur ein zusaetzlicher Eintrag pro betroffener Zeile.
+        current = self.current_result()
+        if current is not None and current.http_status_code >= 400 and current.referring_pages:
+            items.append(ContextMenuItem("show_source", t("ctxmenu.show_source")))
+            items.append(ContextMenuItem.separator())
+        items.extend(
+            [
+                ContextMenuItem("toggle_errors", toggle_label),
+                ContextMenuItem.separator(),
+                ContextMenuItem("save_sitemap", t("ctxmenu.save_sitemap")),
+                ContextMenuItem("save_errors", t("ctxmenu.save_errors")),
+                ContextMenuItem("jira", t("ctxmenu.jira")),
+                ContextMenuItem("forms", t("ctxmenu.forms")),
+            ]
+        )
         self.app.push_screen(
             ContextMenuScreen(items, at=(event.screen_x, event.screen_y)),
             callback=self._on_ctxmenu_action,
@@ -584,6 +594,19 @@ class UrlTable(Static):
     def _on_ctxmenu_action(self, action_id: str | None) -> None:
         """Leitet die im Kontextmenue gewaehlte Aktion an die App weiter."""
         if action_id is None:
+            return
+        if action_id == "show_source":
+            current = self.current_result()
+            if current is None or not current.referring_pages:
+                return
+            # Erste verweisende Seite nehmen — bei mehreren kann der User
+            # die anderen im Detail-Panel direkt anklicken.
+            ref = current.referring_pages[0]
+            source_url = ref.get("url", "")
+            if source_url:
+                fn = getattr(self.app, "_load_source_view", None)
+                if callable(fn):
+                    fn(source_url, current.url)
             return
         actions = {
             "toggle_errors": "action_toggle_errors",

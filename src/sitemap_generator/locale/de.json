@@ -272,5 +272,15 @@
   "ctxmenu.save_errors": "Fehlerbericht als JSON speichern",
   "ctxmenu.jira": "JIRA-Tabelle in Zwischenablage",
   "ctxmenu.forms": "Formular-Report speichern",
-  "binding.errors_show_all": "Alle anzeigen"
+  "binding.errors_show_all": "Alle anzeigen",
+  "detail.show_source": "[Code anzeigen]",
+  "ctxmenu.show_source": "Quell-Code dieser verweisenden Seite anzeigen",
+  "source_view.title": "Quell-Code der verweisenden Seite",
+  "source_view.source": "Quelle",
+  "source_view.target": "Defekter Link",
+  "source_view.found_line": "Gefunden in Zeile {line}",
+  "source_view.not_found": "Link nicht direkt im HTML gefunden — eventuell via JavaScript nachgeladen.",
+  "source_view.close": "Schließen (Esc)",
+  "notify.source_loading": "Lade Quell-Code …",
+  "notify.source_fetch_failed": "Quell-Code konnte nicht geladen werden: {error}"
 }
