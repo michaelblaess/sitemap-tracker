@@ -259,5 +259,9 @@
   "settings.max_depth_label": "Max. Crawl-Tiefe:",
   "table.tab_results": "Ergebnisse",
   "table.tab_tree": "Seitenbaum",
-  "header.concurrency_value": "{count} parallele Requests"
+  "header.concurrency_value": "{count} parallele Requests",
+  "header.status_2xx": "2xx OK",
+  "header.status_3xx": "3xx Redirects",
+  "header.status_4xx": "4xx Fehler",
+  "header.status_5xx": "5xx Server"
 }

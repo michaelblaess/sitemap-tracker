@@ -59,11 +59,11 @@ class CrawlHeader(InfoHeader):  # type: ignore[misc]
             InfoItem("timeout", t("header.timeout"), f"{timeout}s"),
             InfoItem("max_depth", t("stats.max_depth"), str(max_depth)),
             InfoItem("duration", t("stats.duration"), "-"),
-            # Spalte 3: Statuscodes
-            InfoItem("ok", "2xx", "0", value_style="dim"),
-            InfoItem("redirect", "3xx", "0", value_style="dim"),
-            InfoItem("notfound", "4xx", "0", value_style="dim"),
-            InfoItem("server", "5xx", "0", value_style="dim"),
+            # Spalte 3: Statuscodes (Label mit Klartext zur HTTP-Klasse)
+            InfoItem("ok", t("header.status_2xx"), "0", value_style="dim"),
+            InfoItem("redirect", t("header.status_3xx"), "0", value_style="dim"),
+            InfoItem("notfound", t("header.status_4xx"), "0", value_style="dim"),
+            InfoItem("server", t("header.status_5xx"), "0", value_style="dim"),
             # Spalte 4: Fortschritt
             InfoItem("crawled", t("stats.crawled"), "0"),
             InfoItem("discovered", t("stats.discovered"), "0"),
