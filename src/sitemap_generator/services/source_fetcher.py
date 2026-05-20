@@ -109,6 +109,13 @@ def _locate(html: str, target_url: str) -> tuple[int, int, int]:
     parsed = urlparse(target_url)
     if parsed.path and parsed.path != "/":
         candidates.append(parsed.path)
+        # Letzte Pfad-Komponente — fangt relative Links wie
+        # ``<a href="seitenname">`` ab, die im HTML nicht als
+        # absolute URL stehen.
+        last = parsed.path.rstrip("/").rsplit("/", 1)[-1]
+        if last and len(last) >= 3:
+            candidates.append(f'"{last}"')
+            candidates.append(f"'{last}'")
     decoded = unquote(target_url)
     if decoded != target_url:
         candidates.append(decoded)
