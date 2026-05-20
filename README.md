@@ -103,6 +103,7 @@ sitemap-generator https://example.com --cookie session=abc123
 
 Copying / exporting the log runs via right-click on the log panel.
 Hovering a shortcut in the footer reveals a full tooltip explaining what it does.
+URLs in the log, header and detail panel are clickable without holding Ctrl.
 
 ## Features
 
@@ -114,7 +115,10 @@ Hovering a shortcut in the footer reveals a full tooltip explaining what it does
 - **URL normalization**: Duplicates avoided through normalization
 - **Form detection**: `<form>` tags are detected, marked in the table and exportable as JSON
 - **Live TUI**: Progress, statistics and URL details in real time — results table and page tree split across two tabs
-- **Page tree**: Hierarchical view of all crawled URLs with HTTP status, dead-link and not-in-sitemap markers — embedded as a tab; the table's filter applies to the tree as well (matching nodes plus their ancestors stay visible)
+- **Sortable results**: Click any column header (Status, HTTP, Depth, Links, Form, Time, Size, Date, URL) to sort — second click reverses. Active column gets a ▲/▼ marker
+- **Date & size columns**: Last-Modified date and page size are shown directly in the results table, side by side with the URL
+- **Clickable links**: URLs in the log, crawl header and detail panel open in your default browser on a single click (no Ctrl required); local result files (sitemap.xml, JSON reports) open in the OS default app
+- **Page tree**: Hierarchical view of all crawled URLs with HTTP status, dead-link and not-in-sitemap markers — embedded as a tab, siblings sorted alphabetically; the table's filter applies to the tree as well (matching nodes plus their ancestors stay visible)
 - **URL dialog**: `c` opens a dialog (pre-filled with the last URL) to enter or change the target URL — no restart needed
 - **Crawl header**: All crawl statistics — mode, robots.txt, concurrency, status codes, progress — grouped in one collapsible header
 - **Page details**: Selecting a URL shows grouped panels — page info, issues, tech stack, SEO/meta data and HTTP headers
