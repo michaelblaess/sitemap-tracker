@@ -575,17 +575,24 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
         self.notify(t("notify.sitemap_saved", path=written[0], count=len(http_200)))
 
     def action_show_settings(self) -> None:
-        """Zeigt den Settings-Dialog (Sprache + Crawl-Optionen)."""
+        """Zeigt den Settings-Dialog (Sprache + Crawl-Optionen).
+
+        Liest die Werte AUS DEM PERSISTENT-STORAGE (``self._settings``) und
+        NICHT aus den Runtime-Attributen — die werden naemlich beim
+        History-Restore temporaer mit den Crawl-Parametern des historischen
+        Eintrags ueberschrieben. Settings = was als naechster Default geht;
+        Runtime = was der naechste Crawl konkret nutzt.
+        """
         from .screens.settings import SitemapSettingsScreen
 
         current: dict[str, object] = {
             "language": self._settings.language,
-            "respect_robots": self.respect_robots,
-            "render": self.render,
-            "show_preview": self.show_preview,
-            "concurrency": self.concurrency,
-            "timeout": self.timeout,
-            "max_depth": self.max_depth,
+            "respect_robots": self._settings.respect_robots,
+            "render": self._settings.render,
+            "show_preview": self._settings.show_preview,
+            "concurrency": self._settings.concurrency,
+            "timeout": self._settings.timeout,
+            "max_depth": self._settings.max_depth,
         }
         self.push_screen(
             SitemapSettingsScreen(current, lang=current_language()),
