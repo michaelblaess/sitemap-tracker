@@ -308,6 +308,13 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
         url_table = self.query_one("#url-table", UrlTable)
         url_table.clear_results()
 
+        # Detail-Panel rechts (StatsPanel + ggf. Preview) zuruecksetzen —
+        # sonst zeigen sie noch die markierte URL vom vorigen Crawl.
+        with contextlib.suppress(Exception):
+            self.query_one("#stats-panel", StatsPanel).clear_detail()
+        with contextlib.suppress(Exception):
+            self.query_one("#preview-panel", PreviewPanel).clear()
+
         # Log-Panel (samt Splitter) einblenden und leeren
         log_panel = self.query_one("#crawl-log", LogPanel)
         log_panel.show()

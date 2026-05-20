@@ -589,7 +589,14 @@ class UrlTable(Static):
         Erster Klick: aufsteigend. Zweiter auf dieselbe Spalte: absteigend.
         Klick auf eine andere Spalte: neu aufsteigend sortiert. Der aktive
         Spaltenkopf bekommt einen Pfeil (▲ / ▼) als Indikator.
+
+        Waehrend eines laufenden Crawls ist Sortieren deaktiviert — der
+        naechste ``update_result`` wuerde die Sortierreihenfolge sofort
+        wieder ueberschreiben.
         """
+        if getattr(self.app, "_crawl_running", False):
+            self.app.notify(t("notify.sort_disabled_during_crawl"), severity="information", timeout=2)
+            return
         try:
             col_index = self._col_keys.index(event.column_key)
         except ValueError:
