@@ -264,5 +264,6 @@
   "header.status_4xx": "4xx errors",
   "header.status_5xx": "5xx server",
   "table.columns.date": "Date",
-  "table.columns.size": "Size"
+  "table.columns.size": "Size",
+  "notify.sort_disabled_during_crawl": "Sorting is available once the crawl has finished."
 }
