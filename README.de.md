@@ -103,6 +103,7 @@ sitemap-generator https://example.com --cookie session=abc123
 
 Log kopieren / exportieren läuft über Rechtsklick auf das Log-Panel.
 Beim Hovern über ein Tastenkürzel im Footer erscheint ein ausführlicher Tooltip mit der Erklärung.
+URLs im Log, im Header und im Detail-Panel sind ohne festgehaltenes Strg klickbar.
 
 ## Features
 
@@ -114,7 +115,10 @@ Beim Hovern über ein Tastenkürzel im Footer erscheint ein ausführlicher Toolt
 - **URL-Normalisierung**: Duplikate durch Normalisierung vermieden
 - **Formular-Erkennung**: `<form>`-Tags werden erkannt, in der Tabelle markiert und als JSON exportierbar
 - **Live-TUI**: Fortschritt, Statistiken und URL-Details in Echtzeit — Ergebnis-Tabelle und Seitenbaum auf zwei Tabs verteilt
-- **Seitenbaum**: Hierarchische Sicht aller gecrawlten URLs mit HTTP-Status, Dead-Link- und Nicht-in-Sitemap-Markern — eingebettet als Tab; der Tabellen-Filter wirkt auf den Baum mit (passende Knoten und ihre Vorfahren bleiben sichtbar)
+- **Sortierbare Ergebnisse**: Klick auf eine Spaltenüberschrift sortiert die Tabelle (Status, HTTP, Tiefe, Links, Formular, Zeit, Größe, Datum, URL) — zweiter Klick kehrt um. Aktive Spalte mit ▲/▼-Pfeil gekennzeichnet
+- **Datum & Größe direkt in der Tabelle**: Last-Modified-Datum und Seitengröße sind als eigene Spalten neben der URL sichtbar
+- **Klickbare Links**: URLs im Log, im Crawl-Header und im Detail-Panel öffnen mit einem einzelnen Klick (ohne Strg) im Standard-Browser; lokale Ergebnisdateien (sitemap.xml, JSON-Reports) öffnen sich im jeweiligen OS-Standardprogramm
+- **Seitenbaum**: Hierarchische Sicht aller gecrawlten URLs mit HTTP-Status, Dead-Link- und Nicht-in-Sitemap-Markern — eingebettet als Tab, Geschwister alphabetisch sortiert; der Tabellen-Filter wirkt auf den Baum mit (passende Knoten und ihre Vorfahren bleiben sichtbar)
 - **URL-Dialog**: `c` öffnet einen Dialog (mit der zuletzt verwendeten URL vorbelegt), um die Ziel-URL einzugeben oder zu ändern — ohne Neustart
 - **Crawl-Header**: Alle Crawl-Statistiken — Modus, robots.txt, Concurrency, Statuscodes, Fortschritt — gebündelt in einem einklappbaren Kopf-Panel
 - **Seiten-Details**: Beim Auswählen einer URL erscheinen gruppierte Panels — Seiteninfo, Probleme, Tech-Stack, SEO-/Meta-Daten und HTTP-Header
