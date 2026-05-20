@@ -6,7 +6,7 @@
   "binding.history": "History",
   "binding.errors_only": "Show errors only",
   "binding.jira": "JIRA table",
-  "binding.forms": "Forms",
+  "binding.forms": "Forms report",
   "binding.sitemap_diff": "Sitemap diff",
   "binding.copy_detail": "Copy details",
   "binding.copy_log": "Copy log",
@@ -265,5 +265,12 @@
   "header.status_5xx": "5xx server",
   "table.columns.date": "Date",
   "table.columns.size": "Size",
-  "notify.sort_disabled_during_crawl": "Sorting is available once the crawl has finished."
+  "notify.sort_disabled_during_crawl": "Sorting is available once the crawl has finished.",
+  "ctxmenu.errors_on": "Show errors only",
+  "ctxmenu.errors_off": "Show all results",
+  "ctxmenu.save_sitemap": "Save sitemap as XML",
+  "ctxmenu.save_errors": "Save error report as JSON",
+  "ctxmenu.jira": "Copy JIRA table to clipboard",
+  "ctxmenu.forms": "Generate forms report",
+  "binding.errors_show_all": "Show all results"
 }

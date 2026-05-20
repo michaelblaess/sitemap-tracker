@@ -654,6 +654,14 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
         stats_panel = self.query_one("#stats-panel", StatsPanel)
         stats_panel.clear_detail()
 
+        # Footer-Label syncen: aktiver Filter -> "Alle anzeigen", sonst zurueck
+        new_label = t("binding.errors_show_all") if active else t("binding.errors_only")
+        for i, b in enumerate(self._bindings.key_to_bindings.get("e", [])):
+            if b.action == "toggle_errors":
+                self._bindings.key_to_bindings["e"][i] = dataclasses.replace(b, description=new_label)
+                break
+        self.refresh_bindings()
+
         if active:
             self._write_log(t("log.filter_errors"))
             self.notify(t("notify.filter_errors"))
