@@ -425,6 +425,10 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
         # Baum-Tab am Ende des Crawls einmal aufbauen
         url_table.rebuild_tree(self.start_url)
 
+        # Detailansicht nachziehen — waehrend des Crawls bewusst aus, damit
+        # die Cursor-Bewegung im Auto-Scroll keine Re-Renders kostet.
+        self._refresh_detail_for_cursor()
+
         # Statistiken in den juengsten History-Eintrag nachtragen
         History.update_latest_stats(
             total_crawled=stats.total_crawled,
@@ -690,11 +694,30 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
         )
 
     def on_url_table_url_highlighted(self, event: UrlTable.UrlHighlighted) -> None:
-        """Aktualisiert das Detail-Panel (und ggf. die Vorschau) bei Cursor-Bewegung."""
+        """Aktualisiert das Detail-Panel (und ggf. die Vorschau) bei Cursor-Bewegung.
+
+        Waehrend eines laufenden Crawls bleibt die Detailansicht aus —
+        Crawl-Performance hat Vorrang, und die Cursor-Position springt im
+        Auto-Scroll-Modus sowieso staendig. Erst nach Crawl-Ende wird die
+        Detailansicht durch ``_refresh_detail_for_cursor`` aktiviert.
+        """
+        if self._crawl_running:
+            return
         stats_panel = self.query_one("#stats-panel", StatsPanel)
         stats_panel.show_url_detail(event.result)
         if self.show_preview:
             self._load_preview(event.result.url)
+
+    def _refresh_detail_for_cursor(self) -> None:
+        """Setzt die Detailansicht passend zur aktuell markierten Tabellen-Zeile."""
+        url_table = self.query_one("#url-table", UrlTable)
+        current = url_table.current_result()
+        if current is None:
+            return
+        stats_panel = self.query_one("#stats-panel", StatsPanel)
+        stats_panel.show_url_detail(current)
+        if self.show_preview:
+            self._load_preview(current.url)
 
     @work(exclusive=True, group="preview")
     async def _load_preview(self, url: str) -> None:
