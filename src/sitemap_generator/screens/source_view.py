@@ -49,6 +49,11 @@ class SourceViewScreen(ModalScreen[None]):
     SourceViewScreen TextArea {
         height: 1fr;
     }
+    /* Sichtbare Markierung fuer den gefundenen Treffer. */
+    SourceViewScreen TextArea > .text-area--selection {
+        background: $warning 80%;
+        color: $background;
+    }
     SourceViewScreen #button-row {
         height: 3;
         align: center middle;
@@ -103,13 +108,14 @@ class SourceViewScreen(ModalScreen[None]):
     def on_mount(self) -> None:
         if self._line > 0:
             with contextlib.suppress(Exception):
+                from textual.widgets.text_area import Selection
+
                 ta = self.query_one(TextArea)
                 col = max(0, self._column - 1)
                 start = (self._line - 1, col)
                 if self._length > 0:
-                    # Treffer als Selektion markieren — visuell hervorgehoben.
                     end = (self._line - 1, col + self._length)
-                    ta.selection = ta.selection.__class__(start=start, end=end)
+                    ta.selection = Selection(start=start, end=end)
                 else:
                     ta.cursor_location = start
                 ta.scroll_cursor_visible(center=True, animate=False)

@@ -241,7 +241,8 @@ class StatsPanel(VerticalScroll):
         link_markup_fn = getattr(self.app, "link_markup", None)
         source_markup_fn = getattr(self.app, "source_link_markup", None)
         target_url = result.url
-        for ref in result.referring_pages:
+        entries = list(result.referring_pages)
+        for idx, ref in enumerate(entries):
             link_text = ref.get("link_text", "").strip() or "Link"
             ref_url = _sanitize_url(ref.get("url", ""))
             ref_line = Text(overflow="fold")
@@ -252,12 +253,15 @@ class StatsPanel(VerticalScroll):
                 ref_line.append(ref_url, style=f"link {ref_url}")
             ref_lines.append(ref_line)
             if callable(source_markup_fn) and ref_url:
+                # Action-Link linksbuendig auf eigener Zeile.
                 action_line = Text(overflow="fold")
-                action_line.append("      ")
                 action_line.append_text(
                     Text.from_markup(source_markup_fn(t("detail.show_source"), ref_url, target_url))
                 )
                 ref_lines.append(action_line)
+            # Trenner zwischen mehreren Eintraegen.
+            if idx < len(entries) - 1:
+                ref_lines.append(Text("─" * 60, style="dim"))
         border = "red" if result.http_status_code >= 400 else "grey37"
         return self._panel(t("detail.referring_pages"), ref_lines, border_style=border)
 
@@ -273,12 +277,17 @@ class StatsPanel(VerticalScroll):
         self._selected_result = result
 
         # Reihenfolge: Seite (Tech inline) > Probleme (nur wenn vorhanden)
-        # > HTTP-Header > SEO/Meta > Verweisende Seiten.
+        # > Verweisende Seiten (nur 4xx/5xx — direkt nach den Problemen,
+        # damit der User bei Fehlerseiten nicht erst durch SEO/HTTP scrollen
+        # muss) > HTTP-Header > SEO/Meta.
         panels: list = [self._page_panel(result)]
 
         issues_panel = self._issues_panel(result)
         if issues_panel is not None:
             panels.append(issues_panel)
+
+        if result.referring_pages and result.http_status_code >= 400:
+            panels.append(self._referring_panel(result))
 
         if result.response_headers:
             http_lines = [self._detail_line(name, value) for name, value in result.response_headers.items()]
@@ -287,10 +296,6 @@ class StatsPanel(VerticalScroll):
         seo_lines = self._seo_lines(result.seo)
         if seo_lines:
             panels.append(self._panel(t("detail.seo_heading"), seo_lines))
-
-        # Verweisende Seiten nur fuer 4xx/5xx Fehler anzeigen
-        if result.referring_pages and result.http_status_code >= 400:
-            panels.append(self._referring_panel(result))
 
         detail = self.query_one("#url-detail", Static)
         detail.update(Group(*panels))
