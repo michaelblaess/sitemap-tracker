@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import contextlib
+from collections.abc import Callable
 
 from rich.text import Text
 from textual import events
@@ -103,6 +104,10 @@ class UrlTable(Static):
         self._known_urls: set[str] = set()
         self._auto_scroll: bool = True
         self._auto_scroll_row: int = -1
+        # Sort-Status fuer Spaltenkopf-Klicks
+        self._sort_col: int | None = None
+        self._sort_desc: bool = False
+        self._base_column_labels: list[str] = []
 
     def compose(self) -> ComposeResult:
         """Erstellt Filter + Tabs (Ergebnisse / Baumansicht)."""
@@ -123,7 +128,7 @@ class UrlTable(Static):
     def on_mount(self) -> None:
         """Initialisiert die Tabellenspalten und startet den Spinner-Timer."""
         table = self.query_one("#url-data", DataTable)
-        self._col_keys = table.add_columns(
+        self._base_column_labels = [
             t("table.columns.number"),
             t("table.columns.status"),
             t("table.columns.http"),
@@ -134,7 +139,8 @@ class UrlTable(Static):
             t("table.columns.size"),
             t("table.columns.date"),
             t("table.columns.url"),
-        )
+        ]
+        self._col_keys = table.add_columns(*self._base_column_labels)
         self._spinner_timer = self.set_interval(0.3, self._tick_spinner)
 
     def on_input_changed(self, event: Input.Changed) -> None:
@@ -550,3 +556,81 @@ class UrlTable(Static):
                 if result.url == url:
                     self.post_message(self.UrlHighlighted(result))
                     break
+
+    # --- Aktuelles Result und Spalten-Sortierung ----------------------
+
+    def current_result(self) -> CrawlResult | None:
+        """Gibt das in der Tabelle markierte CrawlResult zurueck, oder None."""
+        try:
+            table = self.query_one("#url-data", DataTable)
+        except Exception:
+            return None
+        row = table.cursor_row
+        if 0 <= row < len(self._filtered):
+            return self._filtered[row]
+        return None
+
+    # Sort-Keys pro Spalten-Index — passend zur Reihenfolge in on_mount().
+    _SORT_KEYS: dict[int, Callable[[CrawlResult], object]] = {
+        1: lambda r: r.status.value,
+        2: lambda r: r.http_status_code,
+        3: lambda r: r.depth,
+        4: lambda r: r.links_found,
+        5: lambda r: r.has_form,
+        6: lambda r: r.load_time_ms,
+        7: lambda r: r.page_size,
+        8: lambda r: r.last_modified,
+        9: lambda r: r.url,
+    }
+
+    def on_data_table_header_selected(self, event: DataTable.HeaderSelected) -> None:
+        """Sortiert die Tabelle nach der angeklickten Spalte; toggelt Richtung.
+
+        Erster Klick: aufsteigend. Zweiter auf dieselbe Spalte: absteigend.
+        Klick auf eine andere Spalte: neu aufsteigend sortiert. Der aktive
+        Spaltenkopf bekommt einen Pfeil (▲ / ▼) als Indikator.
+        """
+        try:
+            col_index = self._col_keys.index(event.column_key)
+        except ValueError:
+            return
+        # # / Number-Spalte ist die laufende Nummer und nicht sinnvoll sortierbar
+        if col_index not in self._SORT_KEYS:
+            return
+        if col_index == self._sort_col:
+            self._sort_desc = not self._sort_desc
+        else:
+            self._sort_col = col_index
+            self._sort_desc = False
+        self._apply_sort_and_refresh()
+
+    def _apply_sort_and_refresh(self) -> None:
+        """Sortiert _filtered nach dem aktiven Sort-Schluessel und baut die Tabelle neu."""
+        if self._sort_col is None:
+            self._refresh_table()
+            return
+        key_fn = self._SORT_KEYS[self._sort_col]
+
+        # Defensive: None/leere Werte ans Ende sortieren.
+        def _wrapped(r: CrawlResult) -> tuple[int, object]:
+            v = key_fn(r)
+            return (1, "") if v is None or v == "" else (0, v)
+
+        self._filtered.sort(key=_wrapped, reverse=self._sort_desc)
+        self._update_sort_indicator()
+        self._refresh_table()
+
+    def _update_sort_indicator(self) -> None:
+        """Haengt einen Pfeil an den Spaltenkopf der aktiven Sort-Spalte."""
+        try:
+            table = self.query_one("#url-data", DataTable)
+        except Exception:
+            return
+        arrow = " ▼" if self._sort_desc else " ▲"
+        for idx, key in enumerate(self._col_keys):
+            base = self._base_column_labels[idx]
+            label = f"{base}{arrow}" if idx == self._sort_col else base
+            column = table.columns.get(key)
+            if column is not None:
+                column.label = Text(label)
+        table.refresh()
