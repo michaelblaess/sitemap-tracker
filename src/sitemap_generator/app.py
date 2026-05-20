@@ -120,6 +120,10 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
         self._stats_timer = None
         self.show_preview: bool = self._settings.show_preview
         self._preview_service: PreviewService | None = None
+        # Source-View-Registry: ID -> (source_url, target_url) — siehe
+        # _source_link_markup / action_show_source.
+        self._source_registry: dict[int, tuple[str, str]] = {}
+        self._source_counter: int = 0
 
         # Uebersetzte Binding-Labels setzen
         self._init_bindings()
@@ -807,6 +811,66 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
     def on_horizontal_splitter_resized(self, event: HorizontalSplitter.Resized) -> None:
         """Nach dem Log-Splitter-Drag faengt der Log (1fr) den Restplatz auf."""
         self.query_one("#crawl-log", LogPanel).styles.height = "1fr"
+
+    # --- Source-Code-Viewer fuer defekte Links ----------------------------
+
+    def source_link_markup(self, label: str, source_url: str, target_url: str) -> str:
+        """Markup-Snippet, das auf Klick den HTML-Quellcode der Quell-Seite zeigt.
+
+        Args:
+            label:
+                Sichtbarer Linktext (z.B. ``"Code anzeigen"``).
+            source_url:
+                Die verweisende Seite, deren HTML wir laden.
+            target_url:
+                Die defekte URL, deren Stelle im HTML wir suchen.
+
+        Returns:
+            ``[@click=app.show_source({id})]label[/]`` — der Action-Handler
+            unten loest die ID auf und oeffnet den ``SourceViewScreen``.
+        """
+        self._source_counter += 1
+        link_id = self._source_counter
+        self._source_registry[link_id] = (source_url, target_url)
+        return f"[@click=app.show_source({link_id})]{label}[/]"
+
+    def action_show_source(self, link_id: str) -> None:
+        """Holt das HTML der Quelle und oeffnet den Code-View-Modal."""
+        try:
+            key = int(link_id)
+        except (TypeError, ValueError):
+            return
+        pair = self._source_registry.get(key)
+        if pair is None:
+            return
+        source_url, target_url = pair
+        self._load_source_view(source_url, target_url)
+
+    @work(exclusive=True, group="source_view")
+    async def _load_source_view(self, source_url: str, target_url: str) -> None:
+        """Holt die Quell-Seite, sucht die Linkstelle und zeigt den Modal."""
+        from .screens.source_view import SourceViewScreen
+        from .services.source_fetcher import fetch_and_locate
+
+        self.notify(t("notify.source_loading"), severity="information", timeout=2)
+        try:
+            loc = await fetch_and_locate(
+                source_url,
+                target_url,
+                cookies=self.cookies,
+                user_agent=self.user_agent,
+            )
+        except Exception as exc:
+            self.notify(t("notify.source_fetch_failed", error=str(exc)), severity="error")
+            return
+        self.push_screen(
+            SourceViewScreen(
+                html=loc.html,
+                line=loc.line,
+                source_url=source_url,
+                target_url=target_url,
+            )
+        )
 
     def action_show_about(self) -> None:
         """Zeigt den standardisierten About-Dialog aus textual-widgets an."""

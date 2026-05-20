@@ -272,5 +272,15 @@
   "ctxmenu.save_errors": "Save error report as JSON",
   "ctxmenu.jira": "Copy JIRA table to clipboard",
   "ctxmenu.forms": "Generate forms report",
-  "binding.errors_show_all": "Show all results"
+  "binding.errors_show_all": "Show all results",
+  "detail.show_source": "[show source]",
+  "ctxmenu.show_source": "Show source of referring page",
+  "source_view.title": "Source code of referring page",
+  "source_view.source": "Source",
+  "source_view.target": "Broken link",
+  "source_view.found_line": "Found in line {line}",
+  "source_view.not_found": "Link not found directly in the HTML — possibly injected via JavaScript.",
+  "source_view.close": "Close (Esc)",
+  "notify.source_loading": "Loading source code …",
+  "notify.source_fetch_failed": "Could not load source code: {error}"
 }
