@@ -230,14 +230,22 @@ class StatsPanel(VerticalScroll):
         return self._panel(t("detail.issues_heading"), body, border_style="red")
 
     def _referring_panel(self, result: CrawlResult) -> Panel:
-        """Baut das Panel mit den verweisenden Seiten (fuer 4xx/5xx)."""
+        """Baut das Panel mit den verweisenden Seiten (fuer 4xx/5xx).
+
+        URLs sind ueber das App-Klick-Mixin klickbar (kein CTRL noetig).
+        Fallback OSC-8, falls die App das Mixin nicht hat.
+        """
         ref_lines: list = []
+        link_markup_fn = getattr(self.app, "link_markup", None)
         for ref in result.referring_pages:
             link_text = ref.get("link_text", "").strip() or "Link"
             ref_url = _sanitize_url(ref.get("url", ""))
             ref_line = Text(overflow="fold")
             ref_line.append(f'  "{link_text}" → ')
-            ref_line.append(ref_url, style=f"link {ref_url}")
+            if callable(link_markup_fn) and ref_url:
+                ref_line.append_text(Text.from_markup(link_markup_fn(ref_url, ref_url), overflow="fold"))
+            elif ref_url:
+                ref_line.append(ref_url, style=f"link {ref_url}")
             ref_lines.append(ref_line)
         return self._panel(t("detail.referring_pages"), ref_lines)
 
