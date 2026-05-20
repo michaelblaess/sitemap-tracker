@@ -197,10 +197,14 @@ def main() -> None:
     # Teardown-Rauschen aus playwright/asyncio auf Windows ausblenden.
     _silence_windows_teardown_noise()
 
-    # textual-image vor App-Start initialisieren (nur wenn die Vorschau
-    # aktiv ist), damit die Terminal-Query-Antworten nicht in Widgets landen.
-    if settings.show_preview:
-        _preinit_graphics()
+    # textual-image vor App-Start initialisieren — IMMER, nicht nur bei
+    # aktivierter Vorschau. Das `PreviewPanel`-Widget wird im DOM auch dann
+    # erzeugt, wenn die Vorschau aus ist (nur unsichtbar), und sein
+    # __init__ kann textual-image lazy nachladen, sobald der User die
+    # Vorschau spaeter einschaltet. Wenn der Import erst nach Textual-
+    # Stdin-Hijack passiert, blutet die DA1/Cell-Size-Antwort des Terminals
+    # ins Eingabefeld. Einmal vorab importieren, fertig.
+    _preinit_graphics()
 
     from sitemap_generator.app import SitemapGeneratorApp
 
