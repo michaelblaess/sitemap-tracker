@@ -94,7 +94,6 @@ sitemap-generator https://example.com --cookie session=abc123
 | `g` | Formular-Report exportieren (JSON) |
 | `j` | JIRA-Tabelle in Zwischenablage |
 | `e` | Nur Fehler anzeigen |
-| `b` | Seitenbaum |
 | `f` | Sitemap-Diff |
 | `d` | URL-Details kopieren |
 | `l` | Log ein/aus |
@@ -103,6 +102,7 @@ sitemap-generator https://example.com --cookie session=abc123
 | `q` | Beenden |
 
 Log kopieren / exportieren läuft über Rechtsklick auf das Log-Panel.
+Beim Hovern über ein Tastenkürzel im Footer erscheint ein ausführlicher Tooltip mit der Erklärung.
 
 ## Features
 
@@ -113,10 +113,12 @@ Log kopieren / exportieren läuft über Rechtsklick auf das Log-Panel.
 - **lastmod**: Aus HTTP Last-Modified Header
 - **URL-Normalisierung**: Duplikate durch Normalisierung vermieden
 - **Formular-Erkennung**: `<form>`-Tags werden erkannt, in der Tabelle markiert und als JSON exportierbar
-- **Live-TUI**: Fortschritt, Statistiken und URL-Details in Echtzeit
+- **Live-TUI**: Fortschritt, Statistiken und URL-Details in Echtzeit — Ergebnis-Tabelle und Seitenbaum auf zwei Tabs verteilt
+- **Seitenbaum**: Hierarchische Sicht aller gecrawlten URLs mit HTTP-Status, Dead-Link- und Nicht-in-Sitemap-Markern — eingebettet als Tab; der Tabellen-Filter wirkt auf den Baum mit (passende Knoten und ihre Vorfahren bleiben sichtbar)
 - **URL-Dialog**: `c` öffnet einen Dialog (mit der zuletzt verwendeten URL vorbelegt), um die Ziel-URL einzugeben oder zu ändern — ohne Neustart
 - **Crawl-Header**: Alle Crawl-Statistiken — Modus, robots.txt, Concurrency, Statuscodes, Fortschritt — gebündelt in einem einklappbaren Kopf-Panel
 - **Seiten-Details**: Beim Auswählen einer URL erscheinen gruppierte Panels — Seiteninfo, Probleme, Tech-Stack, SEO-/Meta-Daten und HTTP-Header
+- **Footer-Tooltips**: Zu jedem Tastenkürzel erscheint beim Hovern ein ausführlicher Tooltip — auch zu den kryptischen wie JIRA-Tabelle, Sitemap-Diff oder Formular-Report
 - **Problem-Erkennung**: Markiert typische Schwachstellen pro Seite — HTTP-Fehler, fehlender/zu langer Titel & Description, fehlende H1/Viewport/Canonical, `noindex`, langsame Ladezeit, große Seite
 - **Tech-Stack-Erkennung**: Erkennt CMS, JS-/CSS-Frameworks und Server-Software jeder Seite
 - **Seiten-Vorschau**: Optionaler Screenshot der ausgewählten Seite direkt im Terminal (TGP/Sixel mit Half-Block-Fallback) — in den Einstellungen abschaltbar
@@ -124,6 +126,7 @@ Log kopieren / exportieren läuft über Rechtsklick auf das Log-Panel.
 - **Log-Panel**: Rechtsklick-Kontextmenü — kopieren, in Datei exportieren oder ausblenden
 - **Einstellungen-Dialog**: Sprache, robots.txt, Playwright, Seiten-Vorschau, Concurrency, Timeout und Crawl-Tiefe — dauerhaft gespeichert
 - **Filter mit Verlauf**: URL-Tabelle nach URL/Status filtern; letzte Filterbegriffe im Dropdown
+- **Crawl-History**: Vergangene Crawls mit Datum, URL, Parametern und finalen Statistiken (gecrawlt / 200er / Fehler); Datum im Format der UI-Sprache (DE: `TT.MM.JJJJ`, EN: ISO)
 
 ## Browser-Strategie
 

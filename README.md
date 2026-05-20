@@ -94,7 +94,6 @@ sitemap-generator https://example.com --cookie session=abc123
 | `g` | Export form report (JSON) |
 | `j` | JIRA table to clipboard |
 | `e` | Show errors only |
-| `b` | Sitemap tree |
 | `f` | Sitemap diff |
 | `d` | Copy URL details |
 | `l` | Toggle log |
@@ -103,6 +102,7 @@ sitemap-generator https://example.com --cookie session=abc123
 | `q` | Quit |
 
 Copying / exporting the log runs via right-click on the log panel.
+Hovering a shortcut in the footer reveals a full tooltip explaining what it does.
 
 ## Features
 
@@ -113,10 +113,12 @@ Copying / exporting the log runs via right-click on the log panel.
 - **lastmod**: From HTTP Last-Modified header
 - **URL normalization**: Duplicates avoided through normalization
 - **Form detection**: `<form>` tags are detected, marked in the table and exportable as JSON
-- **Live TUI**: Progress, statistics and URL details in real time
+- **Live TUI**: Progress, statistics and URL details in real time — results table and page tree split across two tabs
+- **Page tree**: Hierarchical view of all crawled URLs with HTTP status, dead-link and not-in-sitemap markers — embedded as a tab; the table's filter applies to the tree as well (matching nodes plus their ancestors stay visible)
 - **URL dialog**: `c` opens a dialog (pre-filled with the last URL) to enter or change the target URL — no restart needed
 - **Crawl header**: All crawl statistics — mode, robots.txt, concurrency, status codes, progress — grouped in one collapsible header
 - **Page details**: Selecting a URL shows grouped panels — page info, issues, tech stack, SEO/meta data and HTTP headers
+- **Footer tooltips**: Every shortcut shows a hover-tooltip explaining what it does — even the cryptic ones like JIRA table, sitemap diff or form report
 - **Issue detection**: Flags common problems per page — HTTP errors, missing/overlong title & description, missing H1/viewport/canonical, `noindex`, slow load, large page
 - **Tech-stack detection**: Detects the CMS, JS/CSS frameworks and server software of each page
 - **Page preview**: Optional in-terminal screenshot of the selected page (TGP/Sixel with half-block fallback) — toggle in settings
@@ -124,6 +126,7 @@ Copying / exporting the log runs via right-click on the log panel.
 - **Log panel**: Right-click context menu — copy, export to file, or hide
 - **Settings dialog**: Language, robots.txt, Playwright, page preview, concurrency, timeout and crawl depth — persisted across runs
 - **Filter with history**: Filter the URL table by URL/status; recent filter terms in a dropdown
+- **Crawl history**: Past crawls with date, URL, parameters and final stats (crawled / 2xx / errors); date in the UI's locale (DE: `dd.MM.yyyy`, EN: ISO)
 
 ## Browser Strategy
 
