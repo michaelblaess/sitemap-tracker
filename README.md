@@ -114,6 +114,8 @@ URLs in the log, header and detail panel are clickable without holding Ctrl.
 - **lastmod**: From HTTP Last-Modified header
 - **URL normalization**: Duplicates avoided through normalization
 - **Form detection**: `<form>` tags are detected, marked in the table and exportable as JSON
+- **Dead-link source viewer**: For every 4xx/5xx page, jump to the referring page's HTML and see the exact line that contains the broken link — Pygments-highlighted, the match line painted in a warm gold band. From there: open the source in your browser, copy a paste-ready snippet (broken URL + ±3 lines of context + line number) to the clipboard, or save the full HTML as evidence
+- **Results context menu**: Right-click on any results row for the five bulk actions (toggle errors-only filter, save sitemap as XML, save error report as JSON, copy JIRA table, generate forms report). 4xx/5xx rows additionally get a one-click jump into the broken-link source viewer
 - **Live TUI**: Progress, statistics and URL details in real time — results table and page tree split across two tabs
 - **Sortable results**: Click any column header (Status, HTTP, Depth, Links, Form, Time, Size, Date, URL) to sort — second click reverses. Active column gets a ▲/▼ marker
 - **Date & size columns**: Last-Modified date and page size are shown directly in the results table, side by side with the URL

@@ -114,6 +114,8 @@ URLs im Log, im Header und im Detail-Panel sind ohne festgehaltenes Strg klickba
 - **lastmod**: Aus HTTP Last-Modified Header
 - **URL-Normalisierung**: Duplikate durch Normalisierung vermieden
 - **Formular-Erkennung**: `<form>`-Tags werden erkannt, in der Tabelle markiert und als JSON exportierbar
+- **Dead-Link-Quelltext-Viewer**: Für jede 4xx/5xx-Seite springst du direkt in den HTML-Quelltext der verweisenden Seite und siehst exakt die Zeile mit dem defekten Link — Pygments-eingefärbt, die Treffer-Zeile in warmem Gold hervorgehoben. Von dort: Quell-URL im Browser öffnen, ein paste-fertiges Snippet (defekte URL + ±3 Zeilen Kontext + Zeilennummer) in die Zwischenablage kopieren, oder das komplette HTML als Beweisstück speichern
+- **Kontextmenü auf der Ergebnis-Tabelle**: Rechtsklick öffnet die fünf Bulk-Aktionen (Nur-Fehler-Filter, Sitemap als XML speichern, Fehlerbericht als JSON speichern, JIRA-Tabelle kopieren, Formular-Report). 4xx/5xx-Zeilen bekommen zusätzlich einen Direkteinstieg in den Quelltext-Viewer
 - **Live-TUI**: Fortschritt, Statistiken und URL-Details in Echtzeit — Ergebnis-Tabelle und Seitenbaum auf zwei Tabs verteilt
 - **Sortierbare Ergebnisse**: Klick auf eine Spaltenüberschrift sortiert die Tabelle (Status, HTTP, Tiefe, Links, Formular, Zeit, Größe, Datum, URL) — zweiter Klick kehrt um. Aktive Spalte mit ▲/▼-Pfeil gekennzeichnet
 - **Datum & Größe direkt in der Tabelle**: Last-Modified-Datum und Seitengröße sind als eigene Spalten neben der URL sichtbar
