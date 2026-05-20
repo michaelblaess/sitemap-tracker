@@ -135,7 +135,7 @@
   "header.mode": "Mode",
   "header.robots": "robots.txt",
   "header.url": "URL",
-  "header.concurrency": "Concurrency",
+  "header.concurrency": "Parallel",
   "header.timeout": "Timeout",
   "tooltip.quit": "Quits the application. A running crawl is cancelled cleanly first.",
   "tooltip.crawl": "Opens the URL dialog (pre-filled with the last crawled URL) and starts a new crawl.",
@@ -259,5 +259,5 @@
   "settings.max_depth_label": "Max crawl depth:",
   "table.tab_results": "Results",
   "table.tab_tree": "Tree view",
-  "header.concurrency_value": "{count} threads"
+  "header.concurrency_value": "{count} requests"
 }
