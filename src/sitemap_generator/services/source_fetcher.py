@@ -37,6 +37,7 @@ async def fetch_and_locate(
     source_url: str,
     target_url: str,
     *,
+    link_text: str = "",
     cookies: list[dict[str, str]] | None = None,
     user_agent: str = "",
     timeout: float = _DEFAULT_TIMEOUT,
@@ -77,21 +78,43 @@ async def fetch_and_locate(
         response = await client.get(source_url)
         html = response.text
 
-    line, col, length = _locate(html, target_url)
+    line, col, length = _locate(html, target_url, source_url=source_url, link_text=link_text)
     return SourceLocation(html=html, line=line, column=col, length=length)
 
 
-def _locate(html: str, target_url: str) -> tuple[int, int, int]:
+def _locate(
+    html: str,
+    target_url: str,
+    *,
+    source_url: str = "",
+    link_text: str = "",
+) -> tuple[int, int, int]:
     """Sucht den ersten Treffer einer Reihe von URL-Varianten im HTML.
 
-    Varianten in dieser Reihenfolge: Original, ohne Fragment, ohne Query,
-    nur Pfad, URL-dekodiert.
+    Varianten in dieser Reihenfolge:
+
+    1. Original-URL
+    2. Ohne Fragment
+    3. Ohne Query
+    4. Pfad
+    5. **Relativer Teil**: ``target_path`` minus ``source_path``-Prefix —
+       fangt Faelle wie ``<a href="github.com/foo">`` ab, wenn die echte
+       (vom Browser aufgeloeste) URL ``/blog/2022/github.com/foo`` ist
+    6. Letzte Pfad-Komponente in Anfuehrungszeichen (``"name"`` /
+       ``'name'``)
+    7. URL-dekodiert
+    8. **Link-Text**: ``>linktext<`` als letzter Strohhalm, wenn die
+       href-Variante nichts findet
 
     Args:
         html:
             HTML-Inhalt der Seite.
         target_url:
             Die zu suchende URL.
+        source_url:
+            Die Seite, in der gesucht wird — fuer den Relativ-Teil-Match.
+        link_text:
+            Optionaler Linktext aus ``<a>...</a>`` — als letzter Fallback.
 
     Returns:
         ``(line, column, length)`` — 1-basiert fuer Zeile/Spalte,
@@ -101,7 +124,7 @@ def _locate(html: str, target_url: str) -> tuple[int, int, int]:
     if not target_url:
         return (0, 0, 0)
 
-    candidates = [target_url]
+    candidates: list[str] = [target_url]
     if "#" in target_url:
         candidates.append(target_url.split("#", 1)[0])
     if "?" in target_url:
@@ -109,16 +132,32 @@ def _locate(html: str, target_url: str) -> tuple[int, int, int]:
     parsed = urlparse(target_url)
     if parsed.path and parsed.path != "/":
         candidates.append(parsed.path)
-        # Letzte Pfad-Komponente — fangt relative Links wie
-        # ``<a href="seitenname">`` ab, die im HTML nicht als
-        # absolute URL stehen.
+
+    # Relativer Teil: target_path minus source_path-Prefix.
+    if source_url:
+        src_parsed = urlparse(source_url)
+        src_path = src_parsed.path
+        if not src_path.endswith("/"):
+            src_path += "/"
+        if src_parsed.netloc == parsed.netloc and parsed.path.startswith(src_path) and parsed.path != src_path:
+            relative = parsed.path[len(src_path) :]
+            if relative:
+                candidates.append(f'"{relative}"')
+                candidates.append(f"'{relative}'")
+                candidates.append(relative)
+
+    if parsed.path and parsed.path != "/":
         last = parsed.path.rstrip("/").rsplit("/", 1)[-1]
         if last and len(last) >= 3:
             candidates.append(f'"{last}"')
             candidates.append(f"'{last}'")
+
     decoded = unquote(target_url)
     if decoded != target_url:
         candidates.append(decoded)
+
+    if link_text and len(link_text.strip()) >= 2:
+        candidates.append(f">{link_text.strip()}<")
 
     # Duplikate raus, Reihenfolge erhalten
     seen: set[str] = set()

@@ -120,9 +120,11 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
         self._stats_timer = None
         self.show_preview: bool = self._settings.show_preview
         self._preview_service: PreviewService | None = None
-        # Source-View-Registry: ID -> (source_url, target_url) — siehe
-        # _source_link_markup / action_show_source.
-        self._source_registry: dict[int, tuple[str, str]] = {}
+        # Source-View-Registry: ID -> (source_url, target_url, link_text) —
+        # siehe source_link_markup / action_show_source. Der Link-Text wird
+        # als letzter Fallback an _locate gereicht, damit auch HTML-Links
+        # ohne direkte URL-Auspraegung gefunden werden.
+        self._source_registry: dict[int, tuple[str, str, str]] = {}
         self._source_counter: int = 0
 
         # Uebersetzte Binding-Labels setzen
@@ -814,7 +816,13 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
 
     # --- Source-Code-Viewer fuer defekte Links ----------------------------
 
-    def source_link_markup(self, label: str, source_url: str, target_url: str) -> str:
+    def source_link_markup(
+        self,
+        label: str,
+        source_url: str,
+        target_url: str,
+        link_text: str = "",
+    ) -> str:
         """Markup-Snippet, das auf Klick den HTML-Quellcode der Quell-Seite zeigt.
 
         Args:
@@ -824,6 +832,10 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
                 Die verweisende Seite, deren HTML wir laden.
             target_url:
                 Die defekte URL, deren Stelle im HTML wir suchen.
+            link_text:
+                Optional: der ``<a>``-Linktext aus dem Crawl — wird als
+                Fallback an ``_locate`` gereicht, wenn die URL-Varianten
+                nichts treffen.
 
         Returns:
             ``[@click=app.show_source({id})]label[/]`` — der Action-Handler
@@ -831,7 +843,7 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
         """
         self._source_counter += 1
         link_id = self._source_counter
-        self._source_registry[link_id] = (source_url, target_url)
+        self._source_registry[link_id] = (source_url, target_url, link_text)
         return f"[@click=app.show_source({link_id})]{label}[/]"
 
     def action_show_source(self, link_id: str) -> None:
@@ -840,14 +852,14 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
             key = int(link_id)
         except (TypeError, ValueError):
             return
-        pair = self._source_registry.get(key)
-        if pair is None:
+        entry = self._source_registry.get(key)
+        if entry is None:
             return
-        source_url, target_url = pair
-        self._load_source_view(source_url, target_url)
+        source_url, target_url, link_text = entry
+        self._load_source_view(source_url, target_url, link_text)
 
     @work(exclusive=True, group="source_view")
-    async def _load_source_view(self, source_url: str, target_url: str) -> None:
+    async def _load_source_view(self, source_url: str, target_url: str, link_text: str = "") -> None:
         """Holt die Quell-Seite, sucht die Linkstelle und zeigt den Modal."""
         from .screens.source_view import SourceViewScreen
         from .services.source_fetcher import fetch_and_locate
@@ -857,6 +869,7 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
             loc = await fetch_and_locate(
                 source_url,
                 target_url,
+                link_text=link_text,
                 cookies=self.cookies,
                 user_agent=self.user_agent,
             )
