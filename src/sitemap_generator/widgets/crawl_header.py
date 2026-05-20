@@ -45,7 +45,7 @@ class CrawlHeader(InfoHeader):  # type: ignore[misc]
         """
         items = [
             # Spalte 1: Ziel
-            InfoItem("url", t("header.url"), ""),
+            InfoItem("url", t("header.url"), "", markup=True),
             InfoItem("mode", t("header.mode"), self._mode_text(render)),
             InfoItem(
                 "robots",
