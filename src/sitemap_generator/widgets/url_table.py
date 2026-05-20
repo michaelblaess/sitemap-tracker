@@ -10,7 +10,7 @@ from textual import events
 from textual.app import ComposeResult
 from textual.message import Message
 from textual.widgets import DataTable, Input, Static, TabbedContent, TabPane
-from textual_widgets import SearchInputWithHistory
+from textual_widgets import ContextMenuItem, ContextMenuScreen, SearchInputWithHistory
 
 from ..i18n import current_language, t
 from ..models.crawl_result import CrawlResult, PageStatus
@@ -547,6 +547,56 @@ class UrlTable(Static):
             return
         if event.key in self._NAV_KEYS:
             self._auto_scroll = False
+
+    def on_click(self, event: events.Click) -> None:
+        """Rechtsklick auf eine Tabellenzeile -> Kontextmenue mit Bulk-Aktionen.
+
+        Linksklick laesst Textual unveraendert die Zeile markieren — wir
+        kapern hier nur button=3 und nur, wenn der Klick im Bereich der
+        DataTable liegt.
+        """
+        if event.button != 3:
+            return
+        try:
+            table = self.query_one("#url-data", DataTable)
+        except Exception:
+            return
+        if not table.region.contains(event.screen_x, event.screen_y):
+            return
+        if not self._results:
+            return
+        event.stop()
+        toggle_label = t("ctxmenu.errors_off" if self._show_only_errors else "ctxmenu.errors_on")
+        items = [
+            ContextMenuItem("toggle_errors", toggle_label),
+            ContextMenuItem.separator(),
+            ContextMenuItem("save_sitemap", t("ctxmenu.save_sitemap")),
+            ContextMenuItem("save_errors", t("ctxmenu.save_errors")),
+            ContextMenuItem("jira", t("ctxmenu.jira")),
+            ContextMenuItem("forms", t("ctxmenu.forms")),
+        ]
+        self.app.push_screen(
+            ContextMenuScreen(items, at=(event.screen_x, event.screen_y)),
+            callback=self._on_ctxmenu_action,
+        )
+
+    def _on_ctxmenu_action(self, action_id: str | None) -> None:
+        """Leitet die im Kontextmenue gewaehlte Aktion an die App weiter."""
+        if action_id is None:
+            return
+        actions = {
+            "toggle_errors": "action_toggle_errors",
+            "save_sitemap": "action_save_sitemap",
+            "save_errors": "action_action_x",
+            "jira": "action_jira_report",
+            "forms": "action_save_forms",
+        }
+        method_name = actions.get(action_id)
+        if method_name is None:
+            return
+        handler = getattr(self.app, method_name, None)
+        if callable(handler):
+            handler()
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         """Sendet ein UrlHighlighted-Event bei Cursor-Bewegung."""
