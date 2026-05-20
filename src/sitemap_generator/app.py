@@ -54,7 +54,6 @@ class SitemapGeneratorApp(LogRouter, App):
         Binding("e", "toggle_errors", "placeholder"),
         Binding("j", "jira_report", "placeholder"),
         Binding("g", "save_forms", "placeholder"),
-        Binding("b", "show_tree", "placeholder"),
         Binding("f", "sitemap_diff", "placeholder"),
         Binding("d", "copy_detail", "placeholder"),
         Binding("l", "toggle_log", "placeholder"),
@@ -130,7 +129,6 @@ class SitemapGeneratorApp(LogRouter, App):
             "toggle_errors": t("binding.errors_only"),
             "jira_report": t("binding.jira"),
             "save_forms": t("binding.forms"),
-            "show_tree": t("binding.tree"),
             "sitemap_diff": t("binding.sitemap_diff"),
             "copy_detail": t("binding.copy_detail"),
             "toggle_log": t("binding.log"),
@@ -138,7 +136,18 @@ class SitemapGeneratorApp(LogRouter, App):
         }
         # Tooltips fuer fortgeschrittene Befehle - werden im Footer beim
         # Maus-Hover ueber der Taste angezeigt.
+        # Tooltips fuer ALLE Footer-Bindings — werden beim Maus-Hover gezeigt.
         binding_tooltips = {
+            "quit": t("tooltip.quit"),
+            "start_crawl": t("tooltip.crawl"),
+            "action_x": t("tooltip.cancel"),
+            "save_sitemap": t("tooltip.save_sitemap"),
+            "show_settings": t("tooltip.settings"),
+            "show_history": t("tooltip.history"),
+            "toggle_errors": t("tooltip.errors_only"),
+            "copy_detail": t("tooltip.copy_detail"),
+            "toggle_log": t("tooltip.log"),
+            "show_about": t("tooltip.info"),
             "jira_report": t("tooltip.jira"),
             "save_forms": t("tooltip.forms"),
             "sitemap_diff": t("tooltip.sitemap_diff"),
@@ -405,6 +414,18 @@ class SitemapGeneratorApp(LogRouter, App):
 
         stats = self._crawler.stats
         header.update_stats(stats)
+
+        # Baum-Tab am Ende des Crawls einmal aufbauen
+        url_table.rebuild_tree(self.start_url)
+
+        # Statistiken in den juengsten History-Eintrag nachtragen
+        History.update_latest_stats(
+            total_crawled=stats.total_crawled,
+            total_2xx=stats.total_2xx,
+            total_3xx=stats.total_3xx,
+            total_4xx=stats.total_4xx,
+            total_5xx=stats.total_5xx,
+        )
 
         http_200 = [r for r in self._results if r.http_status_code == 200]
         self._write_log(t("log.crawl_complete", duration=stats.duration_display))
@@ -772,22 +793,6 @@ class SitemapGeneratorApp(LogRouter, App):
         self._write_log(t("log.forms_written", filename=filename, count=len(form_pages)))
         self.notify(t("notify.forms_saved", filename=filename, count=len(form_pages)))
 
-    def action_show_tree(self) -> None:
-        """Zeigt den Seitenbaum-Dialog an."""
-        if not self._results:
-            self.notify(t("notify.no_results"), severity="warning")
-            return
-
-        from .screens.tree import TreeScreen
-
-        self.push_screen(
-            TreeScreen(
-                self._results,
-                self.start_url,
-                self._official_sitemap_urls,
-            )
-        )
-
     def action_sitemap_diff(self) -> None:
         """Kopiert den Sitemap-Diff (fehlende/ueberfluessige URLs) in die Zwischenablage."""
         if not self._results:
@@ -903,7 +908,7 @@ class SitemapGeneratorApp(LogRouter, App):
             return True if self._results else None
         if action == "toggle_errors":
             return True if self._results else None
-        if action in ("jira_report", "show_tree", "copy_detail", "save_forms"):
+        if action in ("jira_report", "copy_detail", "save_forms"):
             return True if self._results else None
         if action == "sitemap_diff":
             return True if self._results and self._official_sitemap_urls else None

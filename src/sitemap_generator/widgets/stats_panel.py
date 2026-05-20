@@ -93,7 +93,6 @@ class StatsPanel(VerticalScroll):
 
     def compose(self) -> ComposeResult:
         """Erstellt das Panel-Layout."""
-        yield Static(t("stats.ready"), id="stats-content")
         yield Static("", id="url-detail")
 
     @staticmethod

@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
+import contextlib
+
 from rich.text import Text
 from textual import events
 from textual.app import ComposeResult
 from textual.message import Message
-from textual.widgets import DataTable, Input, Static
+from textual.widgets import DataTable, Input, Static, TabbedContent, TabPane
 from textual_widgets import SearchInputWithHistory
 
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, PageStatus
+from .page_tree import PageTree
 
 # Spinner-Frames fuer CRAWLING-Status
 SPINNER_FRAMES = [">  ", ">> ", ">>>", " >>", "  >", "   "]
@@ -29,6 +32,14 @@ class UrlTable(Static):
 
     UrlTable #filter-search {
         height: auto;
+    }
+
+    UrlTable TabbedContent {
+        height: 1fr;
+    }
+
+    UrlTable TabPane {
+        padding: 0;
     }
 
     UrlTable DataTable {
@@ -61,7 +72,7 @@ class UrlTable(Static):
         self._auto_scroll_row: int = -1
 
     def compose(self) -> ComposeResult:
-        """Erstellt die DataTable mit Filter-Eingabe."""
+        """Erstellt Filter + Tabs (Ergebnisse / Baumansicht)."""
         yield Static("", id="results-count")
         yield SearchInputWithHistory(
             placeholder=t("table.filter_placeholder"),
@@ -70,7 +81,11 @@ class UrlTable(Static):
             dropdown_id="filter-dropdown",
             id="filter-search",
         )
-        yield DataTable(id="url-data", cursor_type="row")
+        with TabbedContent(id="url-tabs"):
+            with TabPane(t("table.tab_results"), id="tab-results"):
+                yield DataTable(id="url-data", cursor_type="row")
+            with TabPane(t("table.tab_tree"), id="tab-tree"):
+                yield PageTree(id="page-tree")
 
     def on_mount(self) -> None:
         """Initialisiert die Tabellenspalten und startet den Spinner-Timer."""
@@ -96,6 +111,9 @@ class UrlTable(Static):
         if event.input.id == "filter-bar":
             self._filter_text = event.value
             self._apply_filter()
+            # Filter wirkt auch auf den Baum-Tab
+            with contextlib.suppress(Exception):
+                self.query_one("#page-tree", PageTree).apply_filter(self._filter_text)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Uebernimmt den Filter-Begriff in die Verlaufs-Historie (Enter)."""
@@ -289,7 +307,7 @@ class UrlTable(Static):
             count_label.update(t("table.count_filtered", shown=shown, total=total))
 
     def clear_results(self) -> None:
-        """Leert alle Ergebnisse und die Tabelle."""
+        """Leert alle Ergebnisse, die Tabelle und den Baum-Tab."""
         self._results.clear()
         self._filtered.clear()
         self._row_counter = 0
@@ -298,7 +316,27 @@ class UrlTable(Static):
         self._auto_scroll_row = -1
         table = self.query_one("#url-data", DataTable)
         table.clear()
+        with contextlib.suppress(Exception):
+            self.query_one("#page-tree", PageTree).clear()
         self._update_count_label()
+
+    def rebuild_tree(self, start_url: str) -> None:
+        """Aktualisiert den Baum-Tab aus den aktuell geladenen Ergebnissen.
+
+        Wird typisch am Crawl-Ende aufgerufen (waehrend des Crawls bleibt der
+        Baum still — die DataTable updated live, der Baum kommt am Ende dazu).
+
+        Args:
+            start_url:
+                Start-URL des Crawls (Wurzel des Baums).
+        """
+        try:
+            tree = self.query_one("#page-tree", PageTree)
+        except Exception:
+            return
+        tree.set_data(self._results, start_url, self._sitemap_urls)
+        if self._filter_text:
+            tree.apply_filter(self._filter_text)
 
     def load_results(self, results: list[CrawlResult]) -> None:
         """Laedt alle Ergebnisse in die Tabelle.

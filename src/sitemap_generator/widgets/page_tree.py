@@ -1,0 +1,270 @@
+"""Seitenbaum als eingebettetes Widget (frueher: Modal TreeScreen).
+
+Baut den Baum aus den `parent_url`-Beziehungen der CrawlResults. Der Filter
+der UrlTable wird auf den Baum mit angewendet — passende Knoten plus ihre
+Vorfahren bleiben sichtbar, der Rest verschwindet.
+"""
+
+from __future__ import annotations
+
+import contextlib
+from collections import defaultdict, deque
+from urllib.parse import urlparse
+
+from rich.text import Text
+from textual.app import ComposeResult
+from textual.widget import Widget
+from textual.widgets import Tree
+
+from ..i18n import t
+from ..models.crawl_result import CrawlResult, PageStatus
+
+
+class PageTree(Widget):
+    """Eingebetteter Seitenbaum.
+
+    Wird im "Baumansicht / Struktur"-Tab der `UrlTable` angezeigt.
+    Verlorenen Modal-Funktionen wie Mermaid-/ASCII-Export sind als Methoden
+    erhalten und koennen spaeter ueber ein Kontextmenue freigeschaltet werden.
+    """
+
+    DEFAULT_CSS = """
+    PageTree {
+        height: 1fr;
+    }
+    PageTree #site-tree {
+        height: 1fr;
+    }
+    """
+
+    def __init__(self, **kwargs: object) -> None:
+        super().__init__(**kwargs)
+        self._results: list[CrawlResult] = []
+        self._start_url: str = ""
+        self._sitemap_urls: set[str] = set()
+        self._filter_text: str = ""
+        self._url_to_result: dict[str, CrawlResult] = {}
+        self._children: dict[str, list[str]] = defaultdict(list)
+        self._parent_of: dict[str, str] = {}
+        self._root_url: str = ""
+        self._dirty: bool = False  # Daten geaendert, aber noch nicht gerendert
+
+    def compose(self) -> ComposeResult:
+        yield Tree(t("tree.root_label"), id="site-tree")
+
+    def on_mount(self) -> None:
+        # Falls set_data() vor dem Mount aufgerufen wurde: jetzt rendern.
+        if self._dirty:
+            self._rebuild()
+
+    # --- Public API --------------------------------------------------
+
+    def set_data(
+        self,
+        results: list[CrawlResult],
+        start_url: str,
+        sitemap_urls: set[str] | None = None,
+    ) -> None:
+        """Setzt die zugrundeliegenden Daten und baut den Baum neu auf.
+
+        Args:
+            results:
+                Alle gecrawlten Ergebnisse.
+            start_url:
+                Start-URL des Crawls (Wurzel des Baums).
+            sitemap_urls:
+                Optional: URLs aus der offiziellen sitemap.xml — wird zur
+                Markierung von "nicht-in-sitemap"-Knoten verwendet.
+        """
+        self._results = results
+        self._start_url = start_url
+        self._sitemap_urls = sitemap_urls or set()
+        self._dirty = True
+        if self.is_mounted:
+            self._rebuild()
+
+    def apply_filter(self, filter_text: str) -> None:
+        """Filtert den Baum nach demselben Text wie die URL-Tabelle.
+
+        Args:
+            filter_text:
+                Suchbegriff (Substring auf URL / Status / HTTP-Code).
+                Leerer Text zeigt den vollstaendigen Baum.
+        """
+        new_filter = filter_text or ""
+        if new_filter == self._filter_text:
+            return
+        self._filter_text = new_filter
+        self._dirty = True
+        if self.is_mounted:
+            self._rebuild()
+
+    def clear(self) -> None:
+        """Leert den Baum."""
+        self._results = []
+        self._url_to_result = {}
+        self._children = defaultdict(list)
+        self._parent_of = {}
+        self._root_url = ""
+        self._dirty = True
+        if self.is_mounted:
+            self._rebuild()
+
+    # --- Daten-Aufbau ------------------------------------------------
+
+    def _build_data(self) -> None:
+        """Baut die parent->children-Lookup-Strukturen aus den Results."""
+        self._url_to_result = {}
+        self._children = defaultdict(list)
+        self._parent_of = {}
+        for r in self._results:
+            self._url_to_result[r.url] = r
+            if r.parent_url:
+                self._children[r.parent_url].append(r.url)
+                self._parent_of[r.url] = r.parent_url
+        if self._start_url in self._url_to_result:
+            self._root_url = self._start_url
+        else:
+            self._root_url = ""
+            for r in self._results:
+                if not r.parent_url:
+                    self._root_url = r.url
+                    break
+
+    def _matches_filter(self, url: str) -> bool:
+        """Substring-Match auf URL / Statuscode / Status-Name."""
+        if not self._filter_text:
+            return True
+        search = self._filter_text.lower()
+        if search in url.lower():
+            return True
+        r = self._url_to_result.get(url)
+        if r is not None:
+            if search in str(r.http_status_code):
+                return True
+            if search in r.status.value.lower():
+                return True
+        return False
+
+    def _visible_urls(self) -> set[str]:
+        """URLs, die unter dem aktuellen Filter im Baum erscheinen sollen.
+
+        Match = Knoten selbst + alle Vorfahren bis zur Wurzel (sonst koennten
+        passende Knoten ohne erkennbaren Pfad im Baum erscheinen).
+        """
+        if not self._filter_text:
+            return set(self._url_to_result.keys()) | ({self._root_url} if self._root_url else set())
+        visible: set[str] = set()
+        for url in self._url_to_result:
+            if not self._matches_filter(url):
+                continue
+            cur: str | None = url
+            while cur is not None and cur not in visible:
+                visible.add(cur)
+                cur = self._parent_of.get(cur)
+        if visible and self._root_url:
+            visible.add(self._root_url)
+        return visible
+
+    def _rebuild(self) -> None:
+        """Rendert den Tree neu — nur aufrufen wenn gemountet."""
+        try:
+            tree = self.query_one("#site-tree", Tree)
+        except Exception:
+            return
+        self._dirty = False
+        self._build_data()
+        tree.reset(t("tree.root_label"))
+
+        if not self._root_url or not self._results:
+            tree.root.set_label(t("tree.no_data"))
+            tree.root.expand()
+            return
+
+        visible = self._visible_urls()
+        if self._root_url not in visible:
+            tree.root.set_label(t("tree.no_data"))
+            tree.root.expand()
+            return
+
+        root_result = self._url_to_result.get(self._root_url)
+        tree.root.set_label(self._make_label(self._root_url, root_result))
+        tree.root.data = self._root_url
+        tree.root.expand()
+
+        visited: set[str] = {self._root_url}
+        queue: deque[tuple] = deque()
+        for child in self._children.get(self._root_url, []):
+            if child in visible and child not in visited:
+                queue.append((tree.root, child))
+                visited.add(child)
+        while queue:
+            parent_node, url = queue.popleft()
+            r = self._url_to_result.get(url)
+            node = parent_node.add(self._make_label(url, r), data=url)
+            for child in self._children.get(url, []):
+                if child in visible and child not in visited:
+                    queue.append((node, child))
+                    visited.add(child)
+
+        # Erste Ebene aufklappen — bei aktivem Filter alles aufklappen.
+        if self._filter_text:
+            tree.root.expand_all()
+        else:
+            for child in tree.root.children:
+                child.expand()
+
+    def _make_label(self, url: str, result: CrawlResult | None) -> Text:
+        """Baut das Knoten-Label mit Farbcodierung (gleiche Logik wie zuvor im Modal)."""
+        parsed = urlparse(url)
+        path = parsed.path or "/"
+        if parsed.query:
+            path = f"{path}?{parsed.query}"
+
+        if not result:
+            return Text(f"? {path}")
+
+        icon = result.status_icon
+        code = result.http_status_code
+
+        if result.is_external_redirect:
+            label = Text(f"{icon} ", style="dim")
+            label.append(f"[{code}]", style="dim")
+            label.append(f" {path}", style="dim")
+            label.append(" -> (extern)", style="dim italic")
+            return label
+
+        if result.status == PageStatus.REDIRECT:
+            label = Text(f"{icon} ")
+            label.append(f"[{code}]", style="cyan")
+            label.append(f" {path}")
+            return label
+
+        if code >= 400:
+            style = "bold red"
+        elif code >= 200:
+            style = "green"
+        else:
+            style = ""
+
+        not_in_sitemap = self._sitemap_urls and code == 200 and result.url not in self._sitemap_urls
+
+        label = Text(f"{icon} ")
+        label.append(f"[{code}]", style=style)
+        if not_in_sitemap:
+            label.append(f" {path}", style="dark_orange")
+        else:
+            label.append(f" {path}")
+        return label
+
+    # --- Bequeme Aktionen --------------------------------------------
+
+    def expand_all(self) -> None:
+        with contextlib.suppress(Exception):
+            self.query_one("#site-tree", Tree).root.expand_all()
+
+    def collapse_all(self) -> None:
+        with contextlib.suppress(Exception):
+            tree = self.query_one("#site-tree", Tree)
+            tree.root.collapse_all()
+            tree.root.expand()
