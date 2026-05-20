@@ -253,10 +253,11 @@ class StatsPanel(VerticalScroll):
                 ref_line.append(ref_url, style=f"link {ref_url}")
             ref_lines.append(ref_line)
             if callable(source_markup_fn) and ref_url:
-                # Action-Link linksbuendig auf eigener Zeile.
+                # Action-Link linksbuendig auf eigener Zeile. Link-Text
+                # mitgeben — _locate nutzt ihn als Fallback.
                 action_line = Text(overflow="fold")
                 action_line.append_text(
-                    Text.from_markup(source_markup_fn(t("detail.show_source"), ref_url, target_url))
+                    Text.from_markup(source_markup_fn(t("detail.show_source"), ref_url, target_url, link_text))
                 )
                 ref_lines.append(action_line)
             # Trenner zwischen mehreren Eintraegen.

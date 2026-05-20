@@ -603,10 +603,11 @@ class UrlTable(Static):
             # die anderen im Detail-Panel direkt anklicken.
             ref = current.referring_pages[0]
             source_url = ref.get("url", "")
+            link_text = ref.get("link_text", "")
             if source_url:
                 fn = getattr(self.app, "_load_source_view", None)
                 if callable(fn):
-                    fn(source_url, current.url)
+                    fn(source_url, current.url, link_text)
             return
         actions = {
             "toggle_errors": "action_toggle_errors",
