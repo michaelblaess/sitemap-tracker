@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import os
 import sys
 
@@ -27,14 +28,21 @@ from sitemap_generator.models.settings import Settings
 def _silence_windows_teardown_noise() -> None:
     """Blendet die bekannten asyncio/playwright-Teardown-Meldungen aus.
 
-    Auf Windows raeumt Pythons asyncio die Subprozess-Pipes von Playwright
-    nach App-Ende garbage-collection-spaet auf. Das Ergebnis sind
-    Stderr-Zeilen wie ``unclosed transport`` und
-    ``I/O operation on closed pipe`` aus ``__del__``-Methoden, die alle
-    eingebauten Sauberkeits-Versuche (Browser.close, playwright.stop,
-    Worker-Cancel) NICHT verhindern koennen — die Pipes leben in
-    playwright-eigenen Tasks. Praktisch reines Stderr-Noise.
+    Drei Quellen, drei Filter:
+
+    1. ``ResourceWarning: unclosed transport`` aus den ``__del__``-Methoden
+       der Proactor-Pipes (Windows asyncio + Playwright-Subprozess) — via
+       ``warnings.filterwarnings``.
+    2. ``Exception ignored in: <function _ProactorBasePipeTransport.__del__>``
+       mit ``ValueError: I/O operation on closed pipe`` — via
+       ``sys.unraisablehook``.
+    3. ``Future exception was never retrieved`` (z.B.
+       ``net::ERR_ABORTED; maybe frame was detached?``) aus internen
+       Playwright-Tasks, die nach dem Browser-Close noch eine Antwort
+       erwarten — via ``loop.set_exception_handler``. Tritt vor allem im
+       Nuitka-Compilat auf, wo das Timing leicht anders ist.
     """
+    import asyncio
     import warnings
 
     warnings.filterwarnings("ignore", category=ResourceWarning, message=".*unclosed transport.*")
@@ -51,6 +59,30 @@ def _silence_windows_teardown_noise() -> None:
         prev(unraisable)  # type: ignore[misc]
 
     sys.unraisablehook = _hook  # type: ignore[assignment]
+
+    def _loop_exc_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
+        msg = str(context.get("message", ""))
+        exc = context.get("exception")
+        exc_msg = str(exc) if exc is not None else ""
+        if "never retrieved" in msg or "net::ERR_ABORTED" in exc_msg or "frame was detached" in exc_msg:
+            return  # bekannte playwright/cleanup-Reste — ignorieren
+        loop.default_exception_handler(context)
+
+    # Asyncio nutzt den Event-Loop-Exception-Handler fuer
+    # "Future exception was never retrieved". Wir installieren ihn pro
+    # Loop, sobald ein Loop existiert — beim Programmstart ist meist
+    # noch keiner aktiv, deshalb haengen wir uns in den Policy-Loop-
+    # Factory-Mechanismus.
+    base_policy = asyncio.get_event_loop_policy()
+
+    class _PatchedPolicy(type(base_policy)):  # type: ignore[misc]
+        def new_event_loop(self) -> asyncio.AbstractEventLoop:
+            loop = super().new_event_loop()
+            loop.set_exception_handler(_loop_exc_handler)
+            return loop
+
+    with contextlib.suppress(Exception):
+        asyncio.set_event_loop_policy(_PatchedPolicy())
 
 
 def _preinit_graphics() -> None:

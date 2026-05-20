@@ -262,5 +262,7 @@
   "header.status_2xx": "2xx OK",
   "header.status_3xx": "3xx redirects",
   "header.status_4xx": "4xx errors",
-  "header.status_5xx": "5xx server"
+  "header.status_5xx": "5xx server",
+  "table.columns.date": "Date",
+  "table.columns.size": "Size"
 }
