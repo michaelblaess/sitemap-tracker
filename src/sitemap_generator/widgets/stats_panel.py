@@ -95,8 +95,8 @@ class StatsPanel(VerticalScroll):
         """Erstellt das Panel-Layout."""
         yield Static("", id="url-detail")
 
-    @staticmethod
     def _detail_line(
+        self,
         key: str,
         value: str,
         value_style: str = "",
@@ -104,29 +104,36 @@ class StatsPanel(VerticalScroll):
     ) -> Text:
         """Erzeugt eine Key-Value-Zeile mit fixer Key-Breite und URL-Umbruch.
 
-        Verwendet Text mit overflow=fold statt Table-Zellen,
-        damit lange URLs korrekt umbrechen statt abgeschnitten zu werden.
-        Bei link_url wird ein OSC 8 Terminal-Hyperlink erzeugt, sodass
-        CTRL+Click die volle URL oeffnet - auch wenn der Text umbricht.
+        Bei ``link_url`` wird der Wert ueber das App-weite Klick-Mixin als
+        Textual-Action-Markup eingebettet — klickbar ohne CTRL, mit Hover-
+        Highlight. Faellt auf einen OSC-8-Link zurueck, wenn die App das
+        Mixin nicht hat (z.B. in Unit-Tests ohne run_test).
 
         Args:
             key: Beschriftung (links, dim).
             value: Wert (rechts).
             value_style: Optionaler Rich-Style fuer den Wert.
-            link_url: Optionale URL fuer OSC 8 Hyperlink (CTRL+Click).
+            link_url: Optionale URL oder Pfad — macht den Wert klickbar.
 
         Returns:
             Text-Objekt mit fold-overflow.
         """
         line = Text(overflow="fold")
         line.append(f" {key:<18} ", style="dim")
-        # OSC 8 Hyperlink: Text kann umbrechen, CTRL+Click oeffnet trotzdem
-        # die volle URL (im Terminal-Escape-Code eingebettet)
-        style = value_style
         if link_url:
+            link_markup_fn = getattr(self.app, "link_markup", None)
+            if callable(link_markup_fn):
+                sub = Text.from_markup(link_markup_fn(value, link_url), overflow="fold")
+                if value_style:
+                    sub.stylize(value_style)
+                line.append_text(sub)
+                return line
+            # Fallback: OSC-8 + CTRL+Klick
             style = f"{value_style} link {link_url}".strip()
-        if style:
             line.append(value, style=style)
+            return line
+        if value_style:
+            line.append(value, style=value_style)
         else:
             line.append(value)
         return line
@@ -264,8 +271,6 @@ class StatsPanel(VerticalScroll):
         # Verweisende Seiten nur fuer 4xx/5xx Fehler anzeigen
         if result.referring_pages and result.http_status_code >= 400:
             panels.append(self._referring_panel(result))
-
-        panels.append(Text(t("detail.ctrl_click"), style="dim italic"))
 
         detail = self.query_one("#url-detail", Static)
         detail.update(Group(*panels))
