@@ -282,5 +282,12 @@
   "source_view.not_found": "Link not found directly in the HTML — possibly injected via JavaScript.",
   "source_view.close": "Close (Esc)",
   "notify.source_loading": "Loading source code …",
-  "notify.source_fetch_failed": "Could not load source code: {error}"
+  "notify.source_fetch_failed": "Could not load source code: {error}",
+  "source_view.open_browser": "🌐 Open in browser",
+  "source_view.copy_match": "📋 Copy match",
+  "source_view.save_html": "💾 Save HTML",
+  "source_view.browser_opened": "Source URL opened in browser.",
+  "source_view.match_copied": "Match copied to clipboard.",
+  "source_view.html_saved": "HTML saved: {path}",
+  "source_view.save_failed": "Save failed: {error}"
 }
