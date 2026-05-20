@@ -668,6 +668,12 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
     def _on_history_selected(self, entry: HistoryEntry | None) -> None:
         """Callback nach History-Auswahl.
 
+        Aus der History wird nur die URL uebernommen. Die Crawl-Parameter
+        (Threads, Timeout, Max-Tiefe, Rendering, robots.txt, Cookies,
+        User-Agent) bleiben unangetastet — der naechste Crawl benutzt die
+        aktuell in den Settings konfigurierten Werte. Sonst wuerde ein
+        History-Pick die bewusst geaenderten Settings still ueberschreiben.
+
         Args:
             entry: Der ausgewaehlte HistoryEntry oder None.
         """
@@ -675,14 +681,6 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
             return
 
         self.start_url = entry.url
-        self.max_depth = entry.max_depth
-        self.concurrency = entry.concurrency
-        self.timeout = entry.timeout
-        self.render = entry.render
-        self.respect_robots = entry.respect_robots
-        self.cookies = entry.cookies
-        if entry.user_agent:
-            self.user_agent = entry.user_agent
 
         # UI aktualisieren
         mode = t("mode.playwright") if self.render else t("mode.httpx")
