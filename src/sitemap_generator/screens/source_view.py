@@ -106,20 +106,31 @@ class SourceViewScreen(ModalScreen[None]):
                 yield Button(t("source_view.close"), variant="primary", id="close")
 
     def on_mount(self) -> None:
+        # Cursor und Scroll-Position auf den Treffer setzen — verzoegert,
+        # damit das erste Layout der TextArea (Breite/Hoehe) abgeschlossen
+        # ist. Sonst scrollt der erste Aufruf horizontal ans Zeilenende,
+        # weil TextArea ihre Sichtbarkeitsregion noch nicht kennt.
         if self._line > 0:
-            with contextlib.suppress(Exception):
-                from textual.widgets.text_area import Selection
+            self.call_after_refresh(self._goto_match)
 
-                ta = self.query_one(TextArea)
-                col = max(0, self._column - 1)
-                start = (self._line - 1, col)
-                if self._length > 0:
-                    end = (self._line - 1, col + self._length)
-                    ta.selection = Selection(start=start, end=end)
-                else:
-                    ta.cursor_location = start
-                ta.scroll_cursor_visible(center=True, animate=False)
-                ta.focus()
+    def _goto_match(self) -> None:
+        """Setzt Selection auf den Treffer und scrollt ihn ins sichtbare Feld."""
+        with contextlib.suppress(Exception):
+            from textual.widgets.text_area import Selection
+
+            ta = self.query_one(TextArea)
+            col = max(0, self._column - 1)
+            start = (self._line - 1, col)
+            if self._length > 0:
+                end = (self._line - 1, col + self._length)
+                ta.selection = Selection(start=start, end=end)
+            else:
+                ta.cursor_location = start
+            # Erst horizontal auf 0 — sonst beginnt die Zeile evtl. rechts
+            # vom Treffer und der Scroll-into-view bleibt am Zeilenende.
+            ta.scroll_to(x=0, animate=False)
+            ta.scroll_cursor_visible(center=True, animate=False)
+            ta.focus()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "close":
