@@ -433,7 +433,14 @@ class UrlTable(Static):
                 key=result.url,
             )
         else:
-            # Bestehende Zeile in-place aktualisieren
+            # Bestehende Zeile in-place aktualisieren.
+            # Sonderfall: wenn das Ergebnis JETZT ein 3xx-Duplikat-Redirect
+            # ist (typisch: vorher status=CRAWLING, jetzt REDIRECT mit
+            # Ziel, das schon in den Ergebnissen steht) — Zeile entfernen.
+            if self._is_redirect_to_known_url(result):
+                self._filtered = [r for r in self._results if self._matches_filter(r)]
+                self._refresh_table()
+                return
             table = self.query_one("#url-data", DataTable)
             self._update_row_cells(table, result)
 

@@ -24,6 +24,35 @@ from sitemap_generator.i18n import load_locale, t
 from sitemap_generator.models.settings import Settings
 
 
+def _silence_windows_teardown_noise() -> None:
+    """Blendet die bekannten asyncio/playwright-Teardown-Meldungen aus.
+
+    Auf Windows raeumt Pythons asyncio die Subprozess-Pipes von Playwright
+    nach App-Ende garbage-collection-spaet auf. Das Ergebnis sind
+    Stderr-Zeilen wie ``unclosed transport`` und
+    ``I/O operation on closed pipe`` aus ``__del__``-Methoden, die alle
+    eingebauten Sauberkeits-Versuche (Browser.close, playwright.stop,
+    Worker-Cancel) NICHT verhindern koennen — die Pipes leben in
+    playwright-eigenen Tasks. Praktisch reines Stderr-Noise.
+    """
+    import warnings
+
+    warnings.filterwarnings("ignore", category=ResourceWarning, message=".*unclosed transport.*")
+    warnings.filterwarnings("ignore", category=ResourceWarning, message=".*subprocess.*")
+
+    prev = sys.unraisablehook
+
+    def _hook(unraisable: object) -> None:  # type: ignore[override]
+        exc = getattr(unraisable, "exc_value", None)
+        if isinstance(exc, ValueError) and "closed pipe" in str(exc):
+            return
+        if isinstance(exc, ResourceWarning):
+            return
+        prev(unraisable)  # type: ignore[misc]
+
+    sys.unraisablehook = _hook  # type: ignore[assignment]
+
+
 def _preinit_graphics() -> None:
     """Initialisiert textual-image vor dem App-Start.
 
@@ -164,6 +193,9 @@ def main() -> None:
     if start_url and os.path.isfile(start_url) and start_url.lower().endswith(".xml"):
         sitemap_file = os.path.abspath(start_url)
         start_url = ""  # Wird aus der XML-Datei ermittelt
+
+    # Teardown-Rauschen aus playwright/asyncio auf Windows ausblenden.
+    _silence_windows_teardown_noise()
 
     # textual-image vor App-Start initialisieren (nur wenn die Vorschau
     # aktiv ist), damit die Terminal-Query-Antworten nicht in Widgets landen.

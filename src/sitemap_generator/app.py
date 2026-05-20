@@ -589,7 +589,12 @@ class SitemapGeneratorApp(LogRouter, App):
         self.max_depth = int(result.get("max_depth", self.max_depth))  # type: ignore[arg-type]
 
         new_preview = bool(result.get("show_preview", self.show_preview))
-        preview_changed = new_preview != self.show_preview
+        # Runtime-Flag sofort uebernehmen — sonst feuert _load_preview weiter
+        # und das Panel bleibt sichtbar bis zum Neustart.
+        self.show_preview = new_preview
+        with contextlib.suppress(Exception):
+            panel = self.query_one("#preview-panel", PreviewPanel)
+            panel.display = new_preview
 
         self._settings.respect_robots = self.respect_robots
         self._settings.render = self.render
@@ -607,8 +612,6 @@ class SitemapGeneratorApp(LogRouter, App):
 
         self._write_log(t("log.robots_respected") if self.respect_robots else t("log.robots_ignored"))
         self._write_log(t("log.playwright_on") if self.render else t("log.playwright_off"))
-        if preview_changed:
-            self.notify(t("notify.preview_restart"), severity="information")
 
     def action_toggle_errors(self) -> None:
         """Schaltet den Error-Filter in der Tabelle um."""
