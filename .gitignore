@@ -35,3 +35,6 @@ fehler_*.json
 
 # Playwright
 browsers/
+formulare_*.json
+fehlerbericht_*.json
+sitemap_*.xml

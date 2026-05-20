@@ -570,6 +570,13 @@ class UrlTable(Static):
             return self._filtered[row]
         return None
 
+    def move_cursor_to_top(self) -> None:
+        """Setzt den Tabellen-Cursor auf die erste sichtbare Zeile (Root)."""
+        with contextlib.suppress(Exception):
+            table = self.query_one("#url-data", DataTable)
+            if self._filtered:
+                table.move_cursor(row=0)
+
     # Sort-Keys pro Spalten-Index — passend zur Reihenfolge in on_mount().
     _SORT_KEYS: dict[int, Callable[[CrawlResult], object]] = {
         1: lambda r: r.status.value,

@@ -4,7 +4,7 @@
   "binding.cancel": "Cancel",
   "binding.save_sitemap": "Save sitemap",
   "binding.history": "History",
-  "binding.errors_only": "Errors only",
+  "binding.errors_only": "Show errors only",
   "binding.jira": "JIRA table",
   "binding.forms": "Forms",
   "binding.sitemap_diff": "Sitemap diff",
