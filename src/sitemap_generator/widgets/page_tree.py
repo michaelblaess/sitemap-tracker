@@ -101,7 +101,10 @@ class PageTree(Widget):
         self._sitemap_urls = sitemap_urls or set()
         self._dirty = True
         if self.is_mounted:
-            self._rebuild()
+            # Auf den naechsten Refresh-Tick verschieben — sonst kann
+            # `query_one("#site-tree", Tree)` waehrend Layout-Phasen
+            # fehlschlagen und die Aktualisierung still verloren gehen.
+            self.call_after_refresh(self._rebuild)
 
     def apply_filter(self, filter_text: str) -> None:
         """Filtert den Baum nach demselben Text wie die URL-Tabelle.
@@ -117,7 +120,7 @@ class PageTree(Widget):
         self._filter_text = new_filter
         self._dirty = True
         if self.is_mounted:
-            self._rebuild()
+            self.call_after_refresh(self._rebuild)
 
     def clear(self) -> None:
         """Leert den Baum."""
@@ -142,14 +145,27 @@ class PageTree(Widget):
             if r.parent_url:
                 self._children[r.parent_url].append(r.url)
                 self._parent_of[r.url] = r.parent_url
+        # Wurzel ermitteln in 3 Stufen — soll auch dann eine Wurzel finden,
+        # wenn start_url und result.url leicht unterschiedlich normalisiert
+        # sind (Encoding, Trailing-Slash).
+        start_c = _canon(self._start_url) if self._start_url else ""
+        self._root_url = ""
         if self._start_url in self._url_to_result:
             self._root_url = self._start_url
-        else:
-            self._root_url = ""
+        elif start_c:
+            for u in self._url_to_result:
+                if _canon(u) == start_c:
+                    self._root_url = u
+                    break
+        if not self._root_url:
             for r in self._results:
                 if not r.parent_url:
                     self._root_url = r.url
                     break
+        if not self._root_url and self._results:
+            # Letzte Rettung: einfach das erste Ergebnis nehmen, damit der
+            # Baum etwas anzeigt statt "Keine Daten".
+            self._root_url = self._results[0].url
 
     def _is_dup_redirect(self, url: str) -> bool:
         """Interner Redirect, dessen Ziel sowieso schon im Baum vorhanden ist.

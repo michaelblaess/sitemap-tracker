@@ -15,7 +15,7 @@ Set-Location $PSScriptRoot
 # Corporate-Proxy (Zscaler/EON): uv soll den Windows-Zertifikatspeicher nutzen,
 # in dem die "EON Internal Root CA" liegt - sonst scheitern HTTPS-Downloads an
 # "invalid peer certificate: UnknownIssuer".
-$env:UV_NATIVE_TLS = "1"
+$env:UV_SYSTEM_CERTS = "1"
 # SSL_CERT_FILE wuerde uv ein von rustls abgelehntes Bundle aufzwingen und
 # native-tls aushebeln - daher fuer die uv-Aufrufe in diesem Skript leeren.
 $env:SSL_CERT_FILE = $null
