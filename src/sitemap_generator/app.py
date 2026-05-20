@@ -564,6 +564,7 @@ class SitemapGeneratorApp(LogRouter, App):
             "language": self._settings.language,
             "respect_robots": self.respect_robots,
             "render": self.render,
+            "show_preview": self.show_preview,
             "concurrency": self.concurrency,
             "timeout": self.timeout,
             "max_depth": self.max_depth,

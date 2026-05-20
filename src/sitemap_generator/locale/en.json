@@ -259,5 +259,9 @@
   "settings.max_depth_label": "Max crawl depth:",
   "table.tab_results": "Results",
   "table.tab_tree": "Tree",
-  "header.concurrency_value": "{count} parallel requests"
+  "header.concurrency_value": "{count} parallel requests",
+  "header.status_2xx": "2xx OK",
+  "header.status_3xx": "3xx redirects",
+  "header.status_4xx": "4xx errors",
+  "header.status_5xx": "5xx server"
 }
