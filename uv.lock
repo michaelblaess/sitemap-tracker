@@ -837,7 +837,7 @@ wheels = [
 
 [[package]]
 name = "sitemap-tracker"
-version = "2.0.0"
+version = "2.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
@@ -938,8 +938,8 @@ dependencies = [
 
 [[package]]
 name = "textual-widgets"
-version = "0.20.1"
-source = { git = "https://github.com/michaelblaess/textual-widgets.git#c1691a95ef6d1d968d39afedd73dd1c19343912d" }
+version = "0.24.0"
+source = { git = "https://github.com/michaelblaess/textual-widgets.git#3b70144a09957691e1a6ed5296625c384dda62ef" }
 dependencies = [
     { name = "rich" },
     { name = "textual" },

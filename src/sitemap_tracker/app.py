@@ -901,6 +901,7 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
                 release=__year__,
                 description=t("about.description"),
                 lang=current_language(),
+                license="Apache-2.0",
                 url="https://github.com/michaelblaess/sitemap-tracker",
             )
         )
