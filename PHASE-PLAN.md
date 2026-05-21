@@ -214,6 +214,43 @@ ist gerechtfertigt — Package-Name aendert sich, alte Install-Pfade
 brechen (mit Redirect). User mit ``pip install -e .`` muessen einmal
 neu installieren; mit dem One-Click-Installer ist es automatisch.
 
+## Neue Punkte (2026-05-22)
+
+### 2.10 Icon fuer die erzeugte EXE (Nuitka, Windows)
+- Ein `.ico` ins Repo legen (z.B. `assets/icon.ico` oder `docs/icon.ico`),
+  abgeleitet aus einem Logo/SVG (mehrere Aufloesungen 16/32/48/256 im ICO).
+- `compile-win64.ps1`: `--windows-icon-from-ico=<pfad>` ergaenzen.
+- macOS: TUI ohne `.app`-Bundle -> kein Icon (`--macos-app-icon` entfaellt).
+  Linux: Binaries haben kein eingebettetes Icon.
+- **Aufwand:** klein (sobald die `.ico` existiert) — der eigentliche Aufwand
+  ist das Icon-Design.
+
+### 3.3 Screenshots fuer DE- und EN-UI (README + GitHub-Pages)
+- App im **echten Terminal** je Sprache starten (`--lang de` / `--lang en`).
+  NICHT ueber `run_test()` -> erzeugt Banding-Artefakte (siehe python-specialist).
+- Schluessel-Ansichten: Ergebnisliste + Detail-Panel, Settings (Crawl-Tab),
+  Dead-Link-Quelltext-Viewer, About, Baum-Tab.
+- **Modal-Dialoge:** lassen sich NICHT ueber die Command-Palette screenshotten
+  (Palette geht bei offenem Modal nicht auf) -> `save_screenshot()`
+  programmatisch ODER OS-Tool/Greenshot.
+- Ablage `docs/screenshots/<lang>/...`; einbinden in README.md (EN-Shots),
+  README.de.md (DE-Shots) und die Pages.
+- **Aufwand:** mittel.
+
+### 3.4 GitHub-Pages zweisprachig (EN-Default + DE)
+- `docs/index.html` ist aktuell nur Deutsch. Nach der CLAUDE.md-README-Regel:
+  EN als Default (`index.html`), DE als `index.de.html`, zentrierter
+  Sprachumschalter mit **SVG-Flaggen** (`docs/flags/gb.svg` + `de.svg`,
+  `height="13"`) — Pattern wie retro-amp (KEINE Flaggen-Emoji).
+- `title` / `og:title` je Sprache; alle Texte inhaltsgleich gespiegelt;
+  Screenshots sprachpassend (siehe 3.3).
+- **Aufwand:** mittel-gross.
+
+### AppStore (siehe 3.2)
+- Bereits unter **3.2** erfasst (Microsoft Store / winget / Chocolatey /
+  Scoop / Homebrew / Snap). Sinnvoll erst NACH Icon (2.10) + zweisprachiger
+  Doku (3.3/3.4) und mit signiertem Build.
+
 ## Phase 3 — Marketing / Distribution
 
 ### 3.1 Animiertes GIF / Video
