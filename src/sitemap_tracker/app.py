@@ -8,6 +8,7 @@ import dataclasses
 from datetime import datetime
 from urllib.parse import urlparse
 
+from rich.markup import escape as escape_markup
 from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
@@ -27,7 +28,7 @@ from . import __version__
 from .i18n import current_language, t
 from .models.crawl_result import CrawlResult, PageStatus
 from .models.history import History, HistoryEntry
-from .models.settings import Settings
+from .models.settings import Settings, parse_cookies
 from .models.sitemap_reader import discover_sitemap, load_sitemap_from_file, load_sitemap_urls
 from .models.sitemap_writer import SitemapWriter
 from .services.crawler import Crawler
@@ -63,6 +64,7 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
         Binding("g", "save_forms", "placeholder"),
         Binding("f", "sitemap_diff", "placeholder"),
         Binding("d", "copy_detail", "placeholder"),
+        Binding("v", "view_source", "placeholder"),
         Binding("l", "toggle_log", "placeholder"),
         Binding("plus", "log_bigger", "+", key_display="+", show=False),
         Binding("minus", "log_smaller", "-", key_display="-", show=False),
@@ -99,9 +101,12 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
         self.max_depth = max_depth if max_depth is not None else self._settings.max_depth
         self.concurrency = concurrency if concurrency is not None else self._settings.concurrency
         self.timeout = timeout if timeout is not None else self._settings.timeout
-        self.headless = headless
-        self.user_agent = user_agent
-        self.cookies = cookies or []
+        # CLI --no-headless erzwingt headless=False; sonst aus den Settings.
+        self.headless = headless if not headless else (not self._settings.no_headless)
+        # CLI --user-agent gewinnt, sonst Settings (leer = Crawler-Default).
+        self.user_agent = user_agent or self._settings.user_agent
+        # CLI --cookie gewinnt, sonst aus dem Settings-String geparst.
+        self.cookies = cookies if cookies else parse_cookies(self._settings.cookies)
 
         # render/respect_robots: CLI ueberschreibt Settings
         # CLI --render setzt render=True, sonst aus Settings laden
@@ -144,6 +149,7 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
             "save_forms": t("binding.forms"),
             "sitemap_diff": t("binding.sitemap_diff"),
             "copy_detail": t("binding.copy_detail"),
+            "view_source": t("binding.view_source"),
             "toggle_log": t("binding.log"),
             "show_about": t("binding.info"),
         }
@@ -159,6 +165,7 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
             "show_history": t("tooltip.history"),
             "toggle_errors": t("tooltip.errors_only"),
             "copy_detail": t("tooltip.copy_detail"),
+            "view_source": t("tooltip.view_source"),
             "toggle_log": t("tooltip.log"),
             "show_about": t("tooltip.info"),
             "jira_report": t("tooltip.jira"),
@@ -601,6 +608,9 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
             "concurrency": self._settings.concurrency,
             "timeout": self._settings.timeout,
             "max_depth": self._settings.max_depth,
+            "no_headless": self._settings.no_headless,
+            "user_agent": self._settings.user_agent,
+            "cookies": self._settings.cookies,
         }
         self.push_screen(
             SitemapSettingsScreen(current, lang=current_language()),
@@ -630,12 +640,21 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
             panel = self.query_one("#preview-panel", PreviewPanel)
             panel.display = new_preview
 
+        # Browser-/Request-Optionen: Runtime-Werte fuer den naechsten Crawl.
+        self.headless = not bool(result.get("no_headless", not self.headless))
+        self.user_agent = str(result.get("user_agent", self.user_agent))
+        cookies_raw = str(result.get("cookies", ""))
+        self.cookies = parse_cookies(cookies_raw)
+
         self._settings.respect_robots = self.respect_robots
         self._settings.render = self.render
         self._settings.concurrency = self.concurrency
         self._settings.timeout = self.timeout
         self._settings.max_depth = self.max_depth
         self._settings.show_preview = new_preview
+        self._settings.no_headless = not self.headless
+        self._settings.user_agent = self.user_agent
+        self._settings.cookies = cookies_raw
         self._settings.language = str(result.get("language", self._settings.language))
         self._settings.save()
 
@@ -734,7 +753,9 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
         stats_panel = self.query_one("#stats-panel", StatsPanel)
         stats_panel.show_url_detail(event.result)
         if self.show_preview:
-            self._load_preview(event.result.url)
+            self._load_preview(event.result.url, self._preview_validator(event.result))
+        # Footer-Sichtbarkeit von 'view_source' haengt an der markierten Zeile.
+        self.refresh_bindings()
 
     def _refresh_detail_for_cursor(self) -> None:
         """Setzt die Detailansicht passend zur aktuell markierten Tabellen-Zeile."""
@@ -745,20 +766,46 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
         stats_panel = self.query_one("#stats-panel", StatsPanel)
         stats_panel.show_url_detail(current)
         if self.show_preview:
-            self._load_preview(current.url)
+            self._load_preview(current.url, self._preview_validator(current))
+
+    @staticmethod
+    def _preview_validator(result: CrawlResult) -> str:
+        """Baut den Vorschau-Cache-Validator aus der Crawl-Antwort.
+
+        Prioritaet: ETag > Last-Modified > Content-Length/Dokumentgroesse.
+        Leer, wenn nichts davon vorliegt (dann entscheidet nur das TTL).
+
+        Args:
+            result: Das CrawlResult der markierten URL.
+
+        Returns:
+            Validator-String (z.B. ``"etag:..."``) oder leer.
+        """
+        headers = {k.lower(): v for k, v in result.response_headers.items()}
+        etag = headers.get("etag", "").strip()
+        if etag:
+            return f"etag:{etag}"
+        # Last-Modified liegt als eigenes Feld vor (nicht in response_headers).
+        if result.last_modified.strip():
+            return f"lm:{result.last_modified.strip()}"
+        if result.page_size:
+            return f"len:{result.page_size}"
+        return ""
 
     @work(exclusive=True, group="preview")
-    async def _load_preview(self, url: str) -> None:
+    async def _load_preview(self, url: str, validator: str = "") -> None:
         """Laedt den Seiten-Screenshot fuer das Vorschau-Panel.
 
         Args:
             url: Die zu fotografierende URL.
+            validator: Cache-Validator aus der Crawl-Antwort (siehe
+                ``_preview_validator``).
         """
         panel = self.query_one("#preview-panel", PreviewPanel)
         panel.show_loading()
         if self._preview_service is None:
             self._preview_service = PreviewService()
-        data = await self._preview_service.capture(url)
+        data = await self._preview_service.capture(url, validator)
         panel.show_preview(data)
 
     async def on_unmount(self) -> None:
@@ -844,7 +891,9 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
         self._source_counter += 1
         link_id = self._source_counter
         self._source_registry[link_id] = (source_url, target_url, link_text)
-        return f"[@click=app.show_source({link_id})]{label}[/]"
+        # Label escapen: enthaelt es eckige Klammern (z.B. "[show source]"),
+        # frisst Rich-Markup sie sonst als Tag und der Linktext verschwindet.
+        return f"[@click=app.show_source({link_id})]{escape_markup(label)}[/]"
 
     def action_show_source(self, link_id: str) -> None:
         """Holt das HTML der Quelle und oeffnet den Code-View-Modal."""
@@ -886,6 +935,16 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
                 target_url=target_url,
             )
         )
+
+    def action_view_source(self) -> None:
+        """Oeffnet die Quelltext-Ansicht fuer die markierte Fehlerseite.
+
+        Tastatur-Aequivalent zum ``[Im Quelltext zeigen]``-Klick im
+        Detail-Panel bzw. zum Kontextmenue-Eintrag — nimmt die erste
+        verweisende Seite der aktuell markierten 4xx/5xx-Zeile.
+        """
+        url_table = self.query_one("#url-table", UrlTable)
+        url_table.show_source_for_current()
 
     def action_show_about(self) -> None:
         """Zeigt den standardisierten About-Dialog aus textual-widgets an."""
@@ -1065,6 +1124,13 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
             return True if self._results and self._official_sitemap_urls else None
         if action == "show_history":
             return None if self._crawl_running else True
+        if action == "view_source":
+            if self._crawl_running or not self._results:
+                return None
+            try:
+                return True if self.query_one("#url-table", UrlTable).has_source_for_current() else None
+            except Exception:
+                return None
         return True
 
     async def action_quit(self) -> None:

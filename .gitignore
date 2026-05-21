@@ -39,3 +39,8 @@ formulare_*.json
 fehlerbericht_*.json
 sitemap_*.xml
 quelle_*.html
+
+# VHS-Render-Output (generiert, gross) - nur die .tape-Quelle wird versioniert
+demo/*.gif
+demo/*.mp4
+demo/*.webm
