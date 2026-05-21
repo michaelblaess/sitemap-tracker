@@ -60,6 +60,12 @@ class Settings:
         self.timeout: int = 30
         self.max_depth: int = 10
         self.show_preview: bool = False
+        # Sichtbarer Browser (Debugging) — entspricht CLI --no-headless.
+        self.no_headless: bool = False
+        # Leer = eingebauter Chrome-131-User-Agent des Crawlers.
+        self.user_agent: str = ""
+        # Roh-String "name=value, name2=value2" — Parsing via parse_cookies().
+        self.cookies: str = ""
 
     def save(self) -> None:
         """Speichert die Einstellungen in eine JSON-Datei."""
@@ -73,6 +79,9 @@ class Settings:
             "timeout": self.timeout,
             "max_depth": self.max_depth,
             "show_preview": self.show_preview,
+            "no_headless": self.no_headless,
+            "user_agent": self.user_agent,
+            "cookies": self.cookies,
         }
         SETTINGS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
@@ -98,6 +107,9 @@ class Settings:
                 settings.timeout = int(data.get("timeout", settings.timeout))
                 settings.max_depth = int(data.get("max_depth", settings.max_depth))
                 settings.show_preview = bool(data.get("show_preview", settings.show_preview))
+                settings.no_headless = bool(data.get("no_headless", settings.no_headless))
+                settings.user_agent = str(data.get("user_agent", settings.user_agent))
+                settings.cookies = str(data.get("cookies", settings.cookies))
             except Exception:
                 pass
 
@@ -108,3 +120,29 @@ class Settings:
                 settings.save()
 
         return settings
+
+
+def parse_cookies(raw: str) -> list[dict[str, str]]:
+    """Zerlegt einen Cookie-String in eine Liste von Cookie-Dicts.
+
+    Format: ``name=value, name2=value2`` (Komma-getrennt). Eintraege ohne
+    ``=`` werden ignoriert.
+
+    Args:
+        raw:
+            Roh-String, wie er in den Settings gespeichert ist.
+
+    Returns:
+        Liste von ``{"name": ..., "value": ...}``-Dicts (ggf. leer).
+    """
+    if not raw or not raw.strip():
+        return []
+    cookies: list[dict[str, str]] = []
+    for part in raw.split(","):
+        if "=" not in part:
+            continue
+        name, value = part.split("=", 1)
+        name = name.strip()
+        if name:
+            cookies.append({"name": name, "value": value.strip()})
+    return cookies

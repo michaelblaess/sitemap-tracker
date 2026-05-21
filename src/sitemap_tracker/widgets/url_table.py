@@ -597,18 +597,7 @@ class UrlTable(Static):
         if action_id is None:
             return
         if action_id == "show_source":
-            current = self.current_result()
-            if current is None or not current.referring_pages:
-                return
-            # Erste verweisende Seite nehmen — bei mehreren kann der User
-            # die anderen im Detail-Panel direkt anklicken.
-            ref = current.referring_pages[0]
-            source_url = ref.get("url", "")
-            link_text = ref.get("link_text", "")
-            if source_url:
-                fn = getattr(self.app, "_load_source_view", None)
-                if callable(fn):
-                    fn(source_url, current.url, link_text)
+            self.show_source_for_current()
             return
         actions = {
             "toggle_errors": "action_toggle_errors",
@@ -634,6 +623,34 @@ class UrlTable(Static):
                     break
 
     # --- Aktuelles Result und Spalten-Sortierung ----------------------
+
+    def has_source_for_current(self) -> bool:
+        """Prueft, ob die markierte Zeile eine Quelltext-Ansicht erlaubt.
+
+        Returns:
+            True, wenn die Zeile ein 4xx/5xx-Result mit bekannten
+            verweisenden Seiten ist.
+        """
+        current = self.current_result()
+        return current is not None and current.http_status_code >= 400 and bool(current.referring_pages)
+
+    def show_source_for_current(self) -> None:
+        """Oeffnet die Quelltext-Ansicht fuer die markierte Fehlerseite.
+
+        Nimmt die erste verweisende Seite — bei mehreren kann der User die
+        anderen im Detail-Panel direkt anklicken. Gemeinsame Logik fuer das
+        Kontextmenue und das Tastatur-Binding.
+        """
+        current = self.current_result()
+        if current is None or not current.referring_pages:
+            return
+        ref = current.referring_pages[0]
+        source_url = ref.get("url", "")
+        link_text = ref.get("link_text", "")
+        if source_url:
+            fn = getattr(self.app, "_load_source_view", None)
+            if callable(fn):
+                fn(source_url, current.url, link_text)
 
     def current_result(self) -> CrawlResult | None:
         """Gibt das in der Tabelle markierte CrawlResult zurueck, oder None."""
