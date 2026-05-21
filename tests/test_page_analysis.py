@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from bs4 import BeautifulSoup
 
-from sitemap_generator.models.crawl_result import CrawlResult, SeoInfo
-from sitemap_generator.services.page_analysis import (
+from sitemap_tracker.models.crawl_result import CrawlResult, SeoInfo
+from sitemap_tracker.services.page_analysis import (
     detect_issues,
     detect_tech,
     extract_http_details,

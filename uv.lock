@@ -836,8 +836,8 @@ wheels = [
 ]
 
 [[package]]
-name = "sitemap-generator"
-version = "1.14.0"
+name = "sitemap-tracker"
+version = "2.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },

@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Sitemap Generator - One-Line Installer
-# Usage: curl -fsSL https://raw.githubusercontent.com/michaelblaess/sitemap-generator/main/install.sh | bash
+# Sitemap Tracker - One-Line Installer
+# Usage: curl -fsSL https://raw.githubusercontent.com/michaelblaess/sitemap-tracker/main/install.sh | bash
 set -e
 
-REPO="michaelblaess/sitemap-generator"
-INSTALL_DIR="$HOME/.sitemap-generator"
+REPO="michaelblaess/sitemap-tracker"
+INSTALL_DIR="$HOME/.sitemap-tracker"
 BIN_DIR="$HOME/.local/bin"
 
-echo "=== Sitemap Generator - Installer ==="
+echo "=== Sitemap Tracker - Installer ==="
 echo ""
 
 # OS und Architektur erkennen
@@ -65,15 +65,15 @@ tar -xzf "$TMPFILE" -C "$INSTALL_DIR" --strip-components=1
 rm -f "$TMPFILE"
 
 # Executable finden und ausfuehrbar machen
-chmod +x "$INSTALL_DIR/sitemap-generator" 2>/dev/null || true
+chmod +x "$INSTALL_DIR/sitemap-tracker" 2>/dev/null || true
 
 # Wrapper-Skript in ~/.local/bin
 mkdir -p "$BIN_DIR"
-cat > "$BIN_DIR/sitemap-generator" << 'WRAPPER'
+cat > "$BIN_DIR/sitemap-tracker" << 'WRAPPER'
 #!/usr/bin/env bash
-exec "$HOME/.sitemap-generator/sitemap-generator" "$@"
+exec "$HOME/.sitemap-tracker/sitemap-tracker" "$@"
 WRAPPER
-chmod +x "$BIN_DIR/sitemap-generator"
+chmod +x "$BIN_DIR/sitemap-tracker"
 
 echo ""
 echo "Installation abgeschlossen!"
@@ -88,4 +88,4 @@ if ! echo "$PATH" | tr ':' '\n' | grep -qx "$BIN_DIR"; then
     echo ""
 fi
 
-echo "Starten mit: sitemap-generator https://example.com"
+echo "Starten mit: sitemap-tracker https://example.com"

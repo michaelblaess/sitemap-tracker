@@ -1,4 +1,4 @@
-"""Persistente Einstellungen fuer den Sitemap Generator."""
+"""Persistente Einstellungen fuer den Sitemap Tracker."""
 
 from __future__ import annotations
 
@@ -6,8 +6,10 @@ import contextlib
 import json
 from pathlib import Path
 
-# Einstellungsdatei im User-Verzeichnis
-_SETTINGS_DIR = Path.home() / ".sitemap-generator"
+# Einstellungsdatei im User-Verzeichnis.
+# Hinweis: bis v1.x lag das Verzeichnis unter ``~/.sitemap-generator/`` —
+# die einmalige Kopier-Migration laeuft beim App-Start in ``__main__.py``.
+_SETTINGS_DIR = Path.home() / ".sitemap-tracker"
 _SETTINGS_FILE = _SETTINGS_DIR / "settings.json"
 
 

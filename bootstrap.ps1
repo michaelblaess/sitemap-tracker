@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Sets up the sitemap-generator development environment.
+    Sets up the sitemap-tracker development environment.
 
 .DESCRIPTION
     Creates the .venv via uv, installs runtime + dev dependencies, the Nuitka
@@ -25,7 +25,7 @@ $env:SSL_CERT_FILE = $null
 # Kein Python herunterladen - lokal installiertes (siehe .python-version) verwenden.
 $env:UV_PYTHON_DOWNLOADS = "never"
 
-Write-Host "=== sitemap-generator - dev environment ===" -ForegroundColor Cyan
+Write-Host "=== sitemap-tracker - dev environment ===" -ForegroundColor Cyan
 
 Write-Host "[1/3] venv + dependencies (uv sync)..."
 uv sync --extra dev

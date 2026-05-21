@@ -1,5 +1,5 @@
 #Requires -Version 5.1
-# run.ps1 - starts sitemap-generator from source.
+# run.ps1 - starts sitemap-tracker from source.
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
@@ -8,4 +8,4 @@ if (-not (Test-Path ".venv")) {
     exit 1
 }
 
-& ".venv\Scripts\python.exe" -m sitemap_generator @args
+& ".venv\Scripts\python.exe" -m sitemap_tracker @args

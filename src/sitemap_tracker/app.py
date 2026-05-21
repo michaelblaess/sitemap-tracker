@@ -1,4 +1,4 @@
-"""Hauptanwendung fuer Sitemap Generator."""
+"""Hauptanwendung fuer Sitemap Tracker."""
 
 from __future__ import annotations
 
@@ -45,11 +45,11 @@ LOG_HEIGHT_MAX = 35
 LOG_HEIGHT_STEP = 3
 
 
-class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
+class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
     """TUI-Anwendung zum Crawlen von Websites und Erzeugen von Sitemaps."""
 
     CSS_PATH = "app.tcss"
-    TITLE = f"Sitemap Generator v{__version__}"
+    TITLE = f"Sitemap Tracker v{__version__}"
 
     BINDINGS = [
         Binding("q", "quit", "placeholder"),
@@ -192,7 +192,7 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
                 yield HorizontalSplitter(target_id="url-table", min_size=5, id="log-splitter")
                 yield LogPanel(
                     lang=current_language(),
-                    export_name="sitemap-generator",
+                    export_name="sitemap-tracker",
                     id="crawl-log",
                 )
 
@@ -895,13 +895,13 @@ class SitemapGeneratorApp(ClickableLinksMixin, LogRouter, App):
 
         self.push_screen(
             AboutScreen(
-                app_name="Sitemap Generator",
+                app_name="Sitemap Tracker",
                 version=__version__,
                 author=__author__,
                 release=__year__,
                 description=t("about.description"),
                 lang=current_language(),
-                url="https://github.com/michaelblaess/sitemap-generator",
+                url="https://github.com/michaelblaess/sitemap-tracker",
             )
         )
 

@@ -1,23 +1,23 @@
 #!/usr/bin/env bash
-# compile-macos.sh - compiles sitemap-generator into a standalone macOS binary
+# compile-macos.sh - compiles sitemap-tracker into a standalone macOS binary
 # with Nuitka, with a bundled Chromium browser.
 #
-# Output: dist/sitemap-generator/sitemap-generator + browsers/, and
-# dist/sitemap-generator-vX.Y.Z-macos-<arch>.tar.gz ready to hand out.
+# Output: dist/sitemap-tracker/sitemap-tracker + browsers/, and
+# dist/sitemap-tracker-vX.Y.Z-macos-<arch>.tar.gz ready to hand out.
 #
 # Build machine needs the Xcode Command Line Tools (clang): xcode-select --install
 #
 # Nuitka ad-hoc signs the binary automatically. On download, macOS quarantines
-# it - the recipient clears it once: xattr -dr com.apple.quarantine sitemap-generator
+# it - the recipient clears it once: xattr -dr com.apple.quarantine sitemap-tracker
 # No .app bundle (this is a TUI). The arch (arm64/x86_64) is host-bound.
 
 set -euo pipefail
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-entry="$root/src/sitemap_generator/__main__.py"
-init_py="$root/src/sitemap_generator/__init__.py"
+entry="$root/src/sitemap_tracker/__main__.py"
+init_py="$root/src/sitemap_tracker/__init__.py"
 out_dir="$root/dist"
-dist_dir="$out_dir/sitemap-generator"
+dist_dir="$out_dir/sitemap-tracker"
 arch="$(uname -m)"   # arm64 (Apple Silicon) oder x86_64 (Intel)
 
 if ! command -v clang >/dev/null 2>&1; then
@@ -49,7 +49,7 @@ if [ -z "$version" ]; then
     exit 1
 fi
 
-echo "Compiling sitemap-generator v$version ($arch) with Nuitka..."
+echo "Compiling sitemap-tracker v$version ($arch) with Nuitka..."
 rm -rf "$dist_dir"
 started=$(date +%s)
 
@@ -61,10 +61,10 @@ started=$(date +%s)
     --standalone \
     --assume-yes-for-downloads \
     --remove-output \
-    --include-package=sitemap_generator \
-    --include-package-data=sitemap_generator \
+    --include-package=sitemap_tracker \
+    --include-package-data=sitemap_tracker \
     --output-dir="$out_dir" \
-    --output-filename=sitemap-generator \
+    --output-filename=sitemap-tracker \
     "$entry"
 
 if [ -d "$out_dir/__main__.dist" ]; then
@@ -88,9 +88,9 @@ cp -r "$latest" "$browsers_dir/"
 elapsed=$(( $(date +%s) - started ))
 size_mb=$(du -sm "$dist_dir" | cut -f1)
 
-tarball="$out_dir/sitemap-generator-v$version-macos-$arch.tar.gz"
+tarball="$out_dir/sitemap-tracker-v$version-macos-$arch.tar.gz"
 rm -f "$tarball"
-tar -czf "$tarball" -C "$out_dir" sitemap-generator
+tar -czf "$tarball" -C "$out_dir" sitemap-tracker
 tar_mb=$(du -sm "$tarball" | cut -f1)
 
 echo ""

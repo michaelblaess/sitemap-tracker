@@ -3,9 +3,9 @@ requires = ["setuptools>=68.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "sitemap-generator"
-version = "1.14.0"
-description = "Sitemap Generator with TUI - crawls websites and generates sitemap.xml"
+name = "sitemap-tracker"
+version = "2.0.0"
+description = "Sitemap Tracker - crawls websites, generates sitemap.xml, tracks dead links and SEO issues in a TUI"
 license = "Apache-2.0"
 requires-python = ">=3.12"
 dependencies = [
@@ -32,20 +32,20 @@ dev = [
 ]
 
 [tool.setuptools.package-data]
-sitemap_generator = ["locale/*.json"]
+sitemap_tracker = ["locale/*.json"]
 
 [project.scripts]
-sitemap-generator = "sitemap_generator.__main__:main"
+sitemap-tracker = "sitemap_tracker.__main__:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
 
 [tool.poe.tasks]
-run = { cmd = "python -m sitemap_generator", help = "Startet sitemap-generator" }
+run = { cmd = "python -m sitemap_tracker", help = "Startet sitemap-tracker" }
 test = { cmd = "pytest", help = "Tests sequentiell (schnell bei Unit-Tests)" }
 test-parallel = { cmd = "pytest -n auto", help = "Tests parallel (fuer langsame Test-Suiten)" }
-cov = { cmd = "pytest --cov=sitemap_generator --cov-report=term-missing", help = "Tests + Coverage" }
+cov = { cmd = "pytest --cov=sitemap_tracker --cov-report=term-missing", help = "Tests + Coverage" }
 typecheck = { cmd = "mypy src", help = "mypy strict ueber src/" }
 lint = { cmd = "ruff check .", help = "Ruff Linting" }
 fmt = { cmd = "ruff format .", help = "Ruff Formatting" }

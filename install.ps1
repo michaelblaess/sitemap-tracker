@@ -1,11 +1,11 @@
-# Sitemap Generator - Windows Installer
-# Usage: irm https://raw.githubusercontent.com/michaelblaess/sitemap-generator/main/install.ps1 | iex
+# Sitemap Tracker - Windows Installer
+# Usage: irm https://raw.githubusercontent.com/michaelblaess/sitemap-tracker/main/install.ps1 | iex
 
 $ErrorActionPreference = "Stop"
-$Repo = "michaelblaess/sitemap-generator"
-$InstallDir = "$env:LOCALAPPDATA\sitemap-generator"
+$Repo = "michaelblaess/sitemap-tracker"
+$InstallDir = "$env:LOCALAPPDATA\sitemap-tracker"
 
-Write-Host "=== Sitemap Generator - Installer ===" -ForegroundColor Cyan
+Write-Host "=== Sitemap Tracker - Installer ===" -ForegroundColor Cyan
 Write-Host ""
 
 # Neuestes Release von GitHub holen
@@ -62,6 +62,6 @@ if ($UserPath -notlike "*$InstallDir*") {
 Write-Host ""
 Write-Host "Installation abgeschlossen!" -ForegroundColor Green
 Write-Host ""
-Write-Host "Starten mit: sitemap-generator https://example.com"
+Write-Host "Starten mit: sitemap-tracker https://example.com"
 Write-Host ""
 Write-Host "HINWEIS: Neues Terminal oeffnen damit PATH-Aenderung wirkt." -ForegroundColor Yellow

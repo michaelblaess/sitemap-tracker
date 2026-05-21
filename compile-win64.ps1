@@ -1,26 +1,26 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Compiles sitemap-generator into a standalone Windows binary with Nuitka.
+    Compiles sitemap-tracker into a standalone Windows binary with Nuitka.
 
 .DESCRIPTION
     Self-contained --standalone build (no Python install needed on the target).
     Bundles the Playwright Node driver and a copy of the Chromium browser into
-    dist\sitemap-generator\browsers\, so render mode works without a separate
+    dist\sitemap-tracker\browsers\, so render mode works without a separate
     Playwright install on the target machine. __main__.py points
     PLAYWRIGHT_BROWSERS_PATH at that folder when running as a compiled binary.
 
-    Output: dist\sitemap-generator\sitemap-generator.exe plus its DLLs and
-    browsers\, and dist\sitemap-generator-vX.Y.Z-windows-x64.zip to hand out.
+    Output: dist\sitemap-tracker\sitemap-tracker.exe plus its DLLs and
+    browsers\, and dist\sitemap-tracker-vX.Y.Z-windows-x64.zip to hand out.
 #>
 
 $ErrorActionPreference = "Stop"
 
 $root    = $PSScriptRoot
-$entry   = Join-Path $root "src\sitemap_generator\__main__.py"
-$initPy  = Join-Path $root "src\sitemap_generator\__init__.py"
+$entry   = Join-Path $root "src\sitemap_tracker\__main__.py"
+$initPy  = Join-Path $root "src\sitemap_tracker\__init__.py"
 $outDir  = Join-Path $root "dist"
-$distDir = Join-Path $outDir "sitemap-generator"
+$distDir = Join-Path $outDir "sitemap-tracker"
 
 # venv mit dem Lockfile abgleichen - VOR der python-Ermittlung, damit .venv
 # auch bei einem frischen Checkout (z.B. CI) existiert. --inexact laesst das
@@ -43,11 +43,11 @@ if ($LASTEXITCODE -ne 0) { throw "playwright install fehlgeschlagen" }
 $version = ([regex]'__version__\s*=\s*"([^"]+)"').Match((Get-Content -Raw $initPy)).Groups[1].Value
 if (-not $version) { throw "Konnte __version__ nicht aus $initPy lesen" }
 
-Write-Host "Compiling sitemap-generator v$version with Nuitka..." -ForegroundColor Cyan
+Write-Host "Compiling sitemap-tracker v$version with Nuitka..." -ForegroundColor Cyan
 if (Test-Path $distDir) { Remove-Item -Recurse -Force $distDir }
 $started = Get-Date
 
-# --include-package-data=sitemap_generator : app.tcss + locale\*.json
+# --include-package-data=sitemap_tracker : app.tcss + locale\*.json
 # Den Playwright-Node-Treiber NICHT explizit einschliessen - das macht Nuitkas
 # eingebautes playwright-Plugin. Ein zusaetzliches --include-package-data=
 # playwright kollidiert unter Linux mit dem Plugin ("data file
@@ -56,12 +56,12 @@ $started = Get-Date
     --standalone `
     --assume-yes-for-downloads `
     --remove-output `
-    --include-package=sitemap_generator `
-    --include-package-data=sitemap_generator `
+    --include-package=sitemap_tracker `
+    --include-package-data=sitemap_tracker `
     --output-dir=$outDir `
-    --output-filename=sitemap-generator.exe `
+    --output-filename=sitemap-tracker.exe `
     --company-name="Michael Blaess" `
-    --product-name="sitemap-generator" `
+    --product-name="sitemap-tracker" `
     --file-version=$version `
     --product-version=$version `
     $entry
@@ -70,7 +70,7 @@ if ($LASTEXITCODE -ne 0) { throw "Nuitka-Build fehlgeschlagen (Exit $LASTEXITCOD
 
 # Nuitka benennt den dist-Ordner nach dem Hauptmodul (__main__.dist) - umbenennen
 $nuitkaDist = Join-Path $outDir "__main__.dist"
-if (Test-Path $nuitkaDist) { Rename-Item -Path $nuitkaDist -NewName "sitemap-generator" }
+if (Test-Path $nuitkaDist) { Rename-Item -Path $nuitkaDist -NewName "sitemap-tracker" }
 
 # Chromium aus dem Playwright-Cache in dist\...\browsers\ kopieren, damit der
 # Render-Modus ohne separate Playwright-Installation laeuft. __main__.py setzt
@@ -91,11 +91,11 @@ if (-not $latest) { throw "Kein chromium_headless_shell im Playwright-Cache gefu
 Copy-Item -Recurse -Force $latest.FullName (Join-Path $browsersDir $latest.Name)
 
 $elapsed = [int]((Get-Date) - $started).TotalSeconds
-$exe     = Join-Path $distDir "sitemap-generator.exe"
+$exe     = Join-Path $distDir "sitemap-tracker.exe"
 $sizeMB  = [math]::Round(((Get-ChildItem -Recurse $distDir | Measure-Object Length -Sum).Sum) / 1MB, 1)
 
 # Verteilbares ZIP - "windows" im Namen, damit install.ps1 das Asset findet
-$zip = Join-Path $outDir "sitemap-generator-v$version-windows-x64.zip"
+$zip = Join-Path $outDir "sitemap-tracker-v$version-windows-x64.zip"
 if (Test-Path $zip) { Remove-Item -Force $zip }
 Compress-Archive -Path $distDir -DestinationPath $zip
 $zipMB = [math]::Round((Get-Item $zip).Length / 1MB, 1)
