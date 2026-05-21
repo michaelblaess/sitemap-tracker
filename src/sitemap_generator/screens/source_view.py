@@ -56,9 +56,13 @@ class SourceViewScreen(ModalScreen[None]):
     SourceViewScreen #src-scroll {
         height: 1fr;
         border: solid $surface-lighten-2;
+        overflow-x: auto;
+        overflow-y: auto;
     }
     SourceViewScreen #src-content {
         height: auto;
+        /* Breite wird in on_mount auf max(zeile-laenge) gesetzt,
+         * damit der ScrollableContainer horizontal scrollen kann. */
         width: auto;
         padding: 0 1;
     }
@@ -188,9 +192,21 @@ class SourceViewScreen(ModalScreen[None]):
         return Group(*blocks)
 
     def on_mount(self) -> None:
-        # Scroll-Position auf die Fundstelle — verzoegert, bis das erste
-        # Layout fertig ist; sonst kennt der ScrollableContainer seine
-        # Sichtbarkeitsregion noch nicht.
+        # Breite des Code-Static auf die laengste HTML-Zeile setzen — sonst
+        # bleibt das Static auf der Container-Breite haengen und der
+        # ScrollableContainer hat horizontal nichts zum Scrollen. ``Syntax``
+        # wickelt ohne word_wrap nicht um, also brauchen wir die echte
+        # Breite hier sichtbar.
+        self.call_after_refresh(self._size_and_scroll)
+
+    def _size_and_scroll(self) -> None:
+        """Setzt die Static-Breite + scrollt zum Treffer (in dieser Reihenfolge)."""
+        with contextlib.suppress(Exception):
+            static = self.query_one("#src-content", Static)
+            # +7 fuer Zeilennummer-Gutter (Pygments: 4 Stellen + Padding) +
+            # 2 Padding der ScrollableContainer.
+            max_chars = max((len(line) for line in self._html.split("\n")), default=80)
+            static.styles.width = max_chars + 8
         if self._line > 0:
             self.call_after_refresh(self._scroll_to_match)
 
