@@ -305,10 +305,9 @@ class UrlTable(Static):
         table.update_cell(row_key, self._col_keys[3], str(result.depth))
         table.update_cell(row_key, self._col_keys[4], str(result.links_found) if result.links_found else "-")
         table.update_cell(row_key, self._col_keys[5], form_cell)
-        table.update_cell(
-            row_key, self._col_keys[6], f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-"
-        )
-        table.update_cell(row_key, self._col_keys[7], _format_size(result.page_size))
+        time_str = f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-"
+        table.update_cell(row_key, self._col_keys[6], Text(time_str, justify="right"))
+        table.update_cell(row_key, self._col_keys[7], Text(_format_size(result.page_size), justify="right"))
         table.update_cell(row_key, self._col_keys[8], _format_last_modified(result.last_modified))
         table.update_cell(row_key, self._col_keys[9], self._url_cell(result))
 
@@ -328,6 +327,7 @@ class UrlTable(Static):
             self._row_counter += 1
             url_cell = self._url_cell(result)
             form_cell = Text("JA", style="green") if result.has_form else Text("-", style="dim")
+            time_str = f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-"
             table.add_row(
                 str(self._row_counter),
                 self._status_cell(result),
@@ -335,8 +335,8 @@ class UrlTable(Static):
                 str(result.depth),
                 str(result.links_found) if result.links_found else "-",
                 form_cell,
-                f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-",
-                _format_size(result.page_size),
+                Text(time_str, justify="right"),
+                Text(_format_size(result.page_size), justify="right"),
                 _format_last_modified(result.last_modified),
                 url_cell,
                 key=result.url,
@@ -465,6 +465,7 @@ class UrlTable(Static):
             self._row_counter += 1
             table = self.query_one("#url-data", DataTable)
             form_cell = Text("JA", style="green") if result.has_form else Text("-", style="dim")
+            time_str = f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-"
             table.add_row(
                 str(self._row_counter),
                 self._status_cell(result),
@@ -472,8 +473,8 @@ class UrlTable(Static):
                 str(result.depth),
                 str(result.links_found) if result.links_found else "-",
                 form_cell,
-                f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-",
-                _format_size(result.page_size),
+                Text(time_str, justify="right"),
+                Text(_format_size(result.page_size), justify="right"),
                 _format_last_modified(result.last_modified),
                 self._url_cell(result),
                 key=result.url,
