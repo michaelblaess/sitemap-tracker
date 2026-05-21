@@ -36,7 +36,10 @@ uv pip install nuitka
 if ($LASTEXITCODE -ne 0) { throw "nuitka-Installation fehlgeschlagen" }
 
 Write-Host "[3/3] Playwright Chromium..."
-uv run playwright install chromium
+# Direkter Aufruf von 'playwright install' scheitert manchmal mit
+# "Failed to canonicalize script path" (Bug im EXE-Wrapper). Stattdessen
+# uebers Python-Modul aufrufen - umgeht den Wrapper.
+uv run python -m playwright install chromium
 if ($LASTEXITCODE -ne 0) { throw "playwright install fehlgeschlagen" }
 
 Write-Host ""
