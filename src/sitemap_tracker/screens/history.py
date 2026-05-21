@@ -1,4 +1,4 @@
-"""History-Screen fuer den Sitemap Generator.
+"""History-Screen fuer den Sitemap Tracker.
 
 Zeigt eine Liste vergangener Crawls und ermoeglicht die Wiederholung
 eines ausgewaehlten Crawls.

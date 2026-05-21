@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bootstrap.sh - sets up the sitemap-generator development environment.
+# bootstrap.sh - sets up the sitemap-tracker development environment.
 #
 # Creates the .venv via uv, installs runtime + dev dependencies, the Nuitka
 # build tool (for compile-linux.sh / compile-macos.sh) and the Playwright
@@ -8,7 +8,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-echo "=== sitemap-generator - dev environment ==="
+echo "=== sitemap-tracker - dev environment ==="
 
 echo "[1/3] venv + dependencies (uv sync)..."
 uv sync --extra dev

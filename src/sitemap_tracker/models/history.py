@@ -1,7 +1,8 @@
-"""History-Modell fuer Sitemap Generator.
+"""History-Modell fuer Sitemap Tracker.
 
 Speichert und laedt vergangene Crawl-Konfigurationen aus
-~/.sitemap-generator/history.json.
+~/.sitemap-tracker/history.json. Migration aus dem alten
+``~/.sitemap-generator/`` laeuft beim App-Start in ``__main__.py``.
 """
 
 from __future__ import annotations
@@ -154,13 +155,13 @@ class HistoryEntry:
 
 
 class History:
-    """Verwaltet die Crawl-History in ~/.sitemap-generator/history.json.
+    """Verwaltet die Crawl-History in ~/.sitemap-tracker/history.json.
 
     Stellt statische Methoden zum Laden, Speichern und Hinzufuegen
     von History-Eintraegen bereit.
     """
 
-    HISTORY_DIR = Path.home() / ".sitemap-generator"
+    HISTORY_DIR = Path.home() / ".sitemap-tracker"
     HISTORY_FILE = HISTORY_DIR / "history.json"
     MAX_ENTRIES = 50
 

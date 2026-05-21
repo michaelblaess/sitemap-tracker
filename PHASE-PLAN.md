@@ -1,4 +1,4 @@
-# sitemap-generator: Drei-Phasen-Plan
+# sitemap-tracker: Drei-Phasen-Plan
 
 Status: **Phase 1 erledigt** — alle sechs Items umgesetzt. Seither
 deutlich darueber hinausgegangen (v1.14.0): klickbare Links ueber das
@@ -15,7 +15,7 @@ speichern).
 1. **Tab-Layout:** Eine Filterleiste oben, wirkt auf beide Tabs.
 2. **History-Save-Timing:** Eintrag mit Params bei Crawl-Start, Stats per Update am Ende.
 3. **EN-Datum:** ISO `2026-05-19 20:58` (DE bleibt `dd.MM.yyyy HH:mm`).
-4. **Renaming:** Vorerst nicht entscheiden — bleibt `sitemap-generator` durch Phase 1.
+4. **Renaming:** Vorerst nicht entscheiden — bleibt `sitemap-tracker` durch Phase 1.
 
 ## Phase 1 — UI-Umbau (jetzt)
 
@@ -88,7 +88,7 @@ Diskussion noch offen. Optionen:
 - **Eingebaute Aktionen** mit fester Auswahl (z.B. "URL kopieren", "Im Browser oeffnen",
   "Aus History entfernen", "Als Startpunkt fuer Sub-Crawl").
 - **Plugin-System** mit User-definierten Actions (z.B. Python-Plugins unter
-  `~/.sitemap-generator/plugins/`).
+  `~/.sitemap-tracker/plugins/`).
 - Empfehlung: erst eingebaute Aktionen, Plugin-System spaeter, wenn der Bedarf
   konkret wird.
 
@@ -125,7 +125,7 @@ auto-generiertem Dateinamen. Vorschlag:
   spaeter.
 - Ergebnis: ``str | None`` — der absolute Pfad oder ``None`` bei
   Abbruch.
-- Alle Save-Stellen in sitemap-generator umstellen.
+- Alle Save-Stellen in sitemap-tracker umstellen.
 
 ### 2.8 Export-Dialog (statt verstreuter Footer-Bindings)
 Heute hat der Footer ``m Sitemap | g Forms report | j JIRA | x Fehler-JSON``
@@ -162,7 +162,7 @@ Trademark-Check via DPMA/WIPO durch Michael — Stand: scheint frei.
 **Migrations-Checkliste fuer morgen:**
 
 GitHub & Distribution
-- [ ] GitHub-Repo umbenennen: ``sitemap-generator`` -> ``sitemap-tracker``
+- [ ] GitHub-Repo umbenennen: ``sitemap-tracker`` -> ``sitemap-tracker``
       (legt automatisch einen Redirect an)
 - [ ] ``.github/workflows/release.yml``: Artefakt-Namen anpassen
       (``sitemap-tracker-v*-windows-x64.zip`` etc.)
@@ -177,12 +177,12 @@ Package
       ``[project.scripts] sitemap-tracker = "sitemap_tracker.__main__:main"``,
       ``package-data`` Pfad, ``packages.find`` Konfiguration
 - [ ] Package-Ordner umbenennen:
-      ``src/sitemap_generator/`` -> ``src/sitemap_tracker/``
+      ``src/sitemap_tracker/`` -> ``src/sitemap_tracker/``
 - [ ] ``src/sitemap_tracker/__init__.py``: Docstring anpassen
-- [ ] Alle Module-Imports ``from sitemap_generator...`` -> ``from sitemap_tracker...``
+- [ ] Alle Module-Imports ``from sitemap_tracker...`` -> ``from sitemap_tracker...``
 - [ ] ``tests/`` -> entsprechende Imports + ``import sitemap_tracker``
 - [ ] ``run.ps1`` / ``run.sh``: ``-m sitemap_tracker`` (statt
-      ``sitemap_generator``)
+      ``sitemap_tracker``)
 - [ ] ``__main__.py``: ``set_terminal_title(f"sitemap-tracker v{...}")``
 
 App-sichtbare Strings
@@ -193,7 +193,7 @@ App-sichtbare Strings
 - [ ] Logger-Namen optional: ``logger = logging.getLogger("sitemap_tracker")``
 
 User-Daten — wichtig fuer Bestandskunden
-- [ ] Settings-Verzeichnis ``~/.sitemap-generator/`` -> ``~/.sitemap-tracker/``
+- [ ] Settings-Verzeichnis ``~/.sitemap-tracker/`` -> ``~/.sitemap-tracker/``
 - [ ] **Migration beim Start**: wenn alter Pfad existiert UND neuer nicht,
       einmalig kopieren (``shutil.copytree``) und beim alten Pfad eine
       ``.migrated``-Marker-Datei ablegen — damit Bestands-Crawls, History
@@ -202,7 +202,7 @@ User-Daten — wichtig fuer Bestandskunden
 
 Doku
 - [ ] README.md / README.de.md: Tool-Name, install-URLs, Screenshots-Captions
-- [ ] docs/index.html: title, og:title, alle ``sitemap-generator``-Erwaehnungen
+- [ ] docs/index.html: title, og:title, alle ``sitemap-tracker``-Erwaehnungen
 - [ ] PHASE-PLAN.md: dieser Eintrag dann als ``[x]`` markieren
 
 Branding fuer handmade-software.de

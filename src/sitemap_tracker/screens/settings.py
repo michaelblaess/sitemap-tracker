@@ -1,4 +1,4 @@
-"""Settings-Dialog fuer den Sitemap Generator.
+"""Settings-Dialog fuer den Sitemap Tracker.
 
 Erbt vom standardisierten `BaseSettingsScreen` (textual-widgets): die Basis
 liefert Look, Sprach-Tab und Save/Cancel; diese Klasse ergaenzt nur den

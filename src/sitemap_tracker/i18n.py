@@ -25,7 +25,7 @@ def load_locale(lang: str) -> None:
         lang = DEFAULT_LANGUAGE
 
     try:
-        locale_files = resources.files("sitemap_generator") / "locale" / f"{lang}.json"
+        locale_files = resources.files("sitemap_tracker") / "locale" / f"{lang}.json"
         raw = locale_files.read_text(encoding="utf-8")
         _strings = json.loads(raw)
         _current_lang = lang

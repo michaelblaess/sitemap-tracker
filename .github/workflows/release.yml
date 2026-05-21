@@ -54,8 +54,8 @@ jobs:
         with:
           name: dist-${{ matrix.os }}
           path: |
-            dist/sitemap-generator-v*.zip
-            dist/sitemap-generator-v*.tar.gz
+            dist/sitemap-tracker-v*.zip
+            dist/sitemap-tracker-v*.tar.gz
 
   release:
     needs: build

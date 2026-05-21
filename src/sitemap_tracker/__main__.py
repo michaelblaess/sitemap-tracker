@@ -1,4 +1,4 @@
-"""Entry Point fuer Sitemap Generator."""
+"""Entry Point fuer Sitemap Tracker."""
 
 from __future__ import annotations
 
@@ -20,9 +20,38 @@ if _is_frozen:
 
 from textual_widgets import reset_terminal_title, set_terminal_title
 
-from sitemap_generator import __version__
-from sitemap_generator.i18n import load_locale, t
-from sitemap_generator.models.settings import Settings
+from sitemap_tracker import __version__
+from sitemap_tracker.i18n import load_locale, t
+from sitemap_tracker.models.settings import Settings
+
+
+def _migrate_user_data() -> None:
+    """Kopiert ``~/.sitemap-generator/`` einmalig nach ``~/.sitemap-tracker/``.
+
+    Das Tool hiess bis v1.x ``sitemap-generator`` und legte Settings sowie
+    History unter ``~/.sitemap-generator/`` ab. Beim ersten Start unter dem
+    neuen Namen ``sitemap-tracker`` werden Bestandskunden-Daten kopiert,
+    damit History und Einstellungen nicht verloren gehen.
+
+    Markiert das alte Verzeichnis mit ``.migrated_to_tracker``, damit die
+    Kopie nicht erneut ueberschreibt — der User kann das alte Verzeichnis
+    danach gefahrlos selbst loeschen.
+    """
+    import shutil
+    from pathlib import Path
+
+    old_dir = Path.home() / ".sitemap-generator"
+    new_dir = Path.home() / ".sitemap-tracker"
+    marker = old_dir / ".migrated_to_tracker"
+    if not old_dir.is_dir() or new_dir.exists() or marker.exists():
+        return
+    try:
+        shutil.copytree(old_dir, new_dir)
+        marker.write_text("Daten kopiert nach ~/.sitemap-tracker/\n", encoding="utf-8")
+    except Exception:
+        # Im Zweifel still abbrechen — fehlende Migration ist kein Fehlerfall,
+        # der User startet einfach mit Default-Settings.
+        pass
 
 
 def _silence_windows_teardown_noise() -> None:
@@ -104,6 +133,10 @@ def _preinit_graphics() -> None:
 
 def main() -> None:
     """Haupteinstiegspunkt fuer die CLI."""
+    # Einmalige Migration der User-Daten vom alten Tool-Namen
+    # (sitemap-generator) — muss VOR ``Settings.load()`` laufen.
+    _migrate_user_data()
+
     # Sprache aus Settings laden (fuer CLI-Hilfe)
     settings = Settings.load()
 
@@ -126,7 +159,7 @@ def main() -> None:
         settings.save()
 
     parser = argparse.ArgumentParser(
-        prog="sitemap-generator",
+        prog="sitemap-tracker",
         description=t("cli.banner", version=__version__),
         epilog=t("cli.examples"),
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -238,12 +271,12 @@ def main() -> None:
     # ins Eingabefeld. Einmal vorab importieren, fertig.
     _preinit_graphics()
 
-    from sitemap_generator.app import SitemapGeneratorApp
+    from sitemap_tracker.app import SitemapTrackerApp
 
     # Terminal-Tab-Titel setzen - Textual macht das nicht selbst.
-    set_terminal_title(f"sitemap-generator v{__version__}")
+    set_terminal_title(f"sitemap-tracker v{__version__}")
     try:
-        app = SitemapGeneratorApp(
+        app = SitemapTrackerApp(
             start_url=start_url,
             sitemap_file=sitemap_file,
             output_path=args.output,
