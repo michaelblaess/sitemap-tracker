@@ -152,12 +152,67 @@ Nutzen:
 - Nuetzlich fuer Bug-Reports (User screenshot-t den Fehlerzustand und
   schickt ihn).
 
-### 2.6 Renaming
-Aktuell "sitemap-generator" — der Tool-Umfang ist deutlich groesser geworden.
-- Frage 4 unten: Welcher Name, wann?
-- Migration: GitHub-Repo umbenennen (GitHub legt automatisch einen Redirect an),
-  pyproject/`__init__.py`/Package-Ordner umbenennen, install.ps1/sh-URLs anpassen,
-  README + docs aktualisieren, release.yml-Artefakt-Pfade anpassen.
+### 2.6 Renaming -> **"Sitemap Tracker"**
+Name **fixiert**: ``Sitemap Tracker`` (Display) / ``sitemap-tracker``
+(CLI/Paket/Repo). Beschreibt das, was das Tool tatsaechlich tut — nicht
+nur sitemap.xml erzeugen, sondern *tracken* was sich auf der Site
+bewegt (Dead-Links, Last-Modified, neue/verschwundene Pages).
+Trademark-Check via DPMA/WIPO durch Michael — Stand: scheint frei.
+
+**Migrations-Checkliste fuer morgen:**
+
+GitHub & Distribution
+- [ ] GitHub-Repo umbenennen: ``sitemap-generator`` -> ``sitemap-tracker``
+      (legt automatisch einen Redirect an)
+- [ ] ``.github/workflows/release.yml``: Artefakt-Namen anpassen
+      (``sitemap-tracker-v*-windows-x64.zip`` etc.)
+- [ ] ``install.ps1`` / ``install.sh``: URLs in den raw.githubusercontent-
+      Pfaden + Zielverzeichnis-Name + Wrapper-Script-Name
+- [ ] ``compile-*.{ps1,sh}``: ``--output-filename=sitemap-tracker``,
+      Zip/Tar-Naming, ``--include-package=sitemap_tracker``,
+      ``--product-name="Sitemap Tracker"``
+
+Package
+- [ ] ``pyproject.toml``: ``name = "sitemap-tracker"``,
+      ``[project.scripts] sitemap-tracker = "sitemap_tracker.__main__:main"``,
+      ``package-data`` Pfad, ``packages.find`` Konfiguration
+- [ ] Package-Ordner umbenennen:
+      ``src/sitemap_generator/`` -> ``src/sitemap_tracker/``
+- [ ] ``src/sitemap_tracker/__init__.py``: Docstring anpassen
+- [ ] Alle Module-Imports ``from sitemap_generator...`` -> ``from sitemap_tracker...``
+- [ ] ``tests/`` -> entsprechende Imports + ``import sitemap_tracker``
+- [ ] ``run.ps1`` / ``run.sh``: ``-m sitemap_tracker`` (statt
+      ``sitemap_generator``)
+- [ ] ``__main__.py``: ``set_terminal_title(f"sitemap-tracker v{...}")``
+
+App-sichtbare Strings
+- [ ] ``TITLE = "Sitemap Tracker v{...}"``
+- [ ] ``AboutScreen(app_name="Sitemap Tracker", ...)``
+- [ ] i18n-Keys ``log.version`` (``[bold]Sitemap Tracker v{version}[/bold]``),
+      ``cli.banner``, ``about.description`` (Tool-Name)
+- [ ] Logger-Namen optional: ``logger = logging.getLogger("sitemap_tracker")``
+
+User-Daten — wichtig fuer Bestandskunden
+- [ ] Settings-Verzeichnis ``~/.sitemap-generator/`` -> ``~/.sitemap-tracker/``
+- [ ] **Migration beim Start**: wenn alter Pfad existiert UND neuer nicht,
+      einmalig kopieren (``shutil.copytree``) und beim alten Pfad eine
+      ``.migrated``-Marker-Datei ablegen — damit Bestands-Crawls, History
+      und Settings nicht verloren gehen
+- [ ] History-Dateipfad analog
+
+Doku
+- [ ] README.md / README.de.md: Tool-Name, install-URLs, Screenshots-Captions
+- [ ] docs/index.html: title, og:title, alle ``sitemap-generator``-Erwaehnungen
+- [ ] PHASE-PLAN.md: dieser Eintrag dann als ``[x]`` markieren
+
+Branding fuer handmade-software.de
+- [ ] Free-Variante: ``Sitemap Tracker`` (Phase-1-Funktionalitaet)
+- [ ] PRO-Variante: ``Sitemap Tracker Pro`` mit Phase-2-Features
+
+**Release-Strategie:** Ein einziger ``release: v2.0.0``-Cut. MAJOR-Bump
+ist gerechtfertigt — Package-Name aendert sich, alte Install-Pfade
+brechen (mit Redirect). User mit ``pip install -e .`` muessen einmal
+neu installieren; mit dem One-Click-Installer ist es automatisch.
 
 ## Phase 3 — Marketing / Distribution
 
