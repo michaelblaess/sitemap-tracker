@@ -17,6 +17,7 @@ from textual.widgets import Footer, Header
 from textual_themes import register_all
 from textual_widgets import (
     ClickableLinksMixin,
+    CrashGuard,
     HorizontalSplitter,
     LogPanel,
     LogRouter,
@@ -46,7 +47,7 @@ LOG_HEIGHT_MAX = 35
 LOG_HEIGHT_STEP = 3
 
 
-class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
+class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
     """TUI-Anwendung zum Crawlen von Websites und Erzeugen von Sitemaps."""
 
     CSS_PATH = "app.tcss"
@@ -86,6 +87,10 @@ class SitemapTrackerApp(ClickableLinksMixin, LogRouter, App):
         cookies: list[dict[str, str]] | None = None,
     ) -> None:
         super().__init__()
+
+        # Sprache fuer den CrashGuard-Fehlerdialog (faengt unbehandelte
+        # Exceptions ab statt die App komplett abstuerzen zu lassen).
+        self.crash_guard_lang = current_language()
 
         # Alle Retro-Themes aus textual-themes registrieren (31 Themes,
         # via Ctrl+P → "theme" auswaehlbar).
