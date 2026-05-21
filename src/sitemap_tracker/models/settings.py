@@ -9,8 +9,8 @@ from pathlib import Path
 # Einstellungsdatei im User-Verzeichnis.
 # Hinweis: bis v1.x lag das Verzeichnis unter ``~/.sitemap-generator/`` —
 # die einmalige Kopier-Migration laeuft beim App-Start in ``__main__.py``.
-_SETTINGS_DIR = Path.home() / ".sitemap-tracker"
-_SETTINGS_FILE = _SETTINGS_DIR / "settings.json"
+SETTINGS_DIR = Path.home() / ".sitemap-tracker"
+SETTINGS_FILE = SETTINGS_DIR / "settings.json"
 
 
 # textual-themes 0.5 hat 25 Themes umbenannt (trademark-safety pass).
@@ -63,7 +63,7 @@ class Settings:
 
     def save(self) -> None:
         """Speichert die Einstellungen in eine JSON-Datei."""
-        _SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+        SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
         data = {
             "theme": self.theme,
             "respect_robots": self.respect_robots,
@@ -74,7 +74,7 @@ class Settings:
             "max_depth": self.max_depth,
             "show_preview": self.show_preview,
         }
-        _SETTINGS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
+        SETTINGS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
     @classmethod
     def load(cls) -> Settings:
@@ -87,9 +87,9 @@ class Settings:
             Settings-Instanz.
         """
         settings = cls()
-        if _SETTINGS_FILE.is_file():
+        if SETTINGS_FILE.is_file():
             try:
-                data = json.loads(_SETTINGS_FILE.read_text(encoding="utf-8"))
+                data = json.loads(SETTINGS_FILE.read_text(encoding="utf-8"))
                 settings.theme = data.get("theme", settings.theme)
                 settings.respect_robots = data.get("respect_robots", settings.respect_robots)
                 settings.render = data.get("render", settings.render)

@@ -256,6 +256,8 @@
   "settings.concurrency_label": "Parallele Requests:",
   "settings.timeout_label": "Timeout (Sek.):",
   "settings.max_depth_label": "Max. Crawl-Tiefe:",
+  "settings.storage.config": "Einstellungen",
+  "settings.storage.history": "Historie",
   "table.tab_results": "Ergebnisse",
   "table.tab_tree": "Seitenbaum",
   "header.concurrency_value": "{count} parallele Requests",

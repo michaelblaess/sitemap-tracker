@@ -7,12 +7,16 @@ Crawl-Tab mit den App-spezifischen Optionen.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from textual.app import ComposeResult
 from textual.containers import Horizontal
 from textual.widgets import Checkbox, Input, Label, Static, TabPane
 from textual_widgets import BaseSettingsScreen
 
 from ..i18n import t
+from ..models.history import History
+from ..models.settings import SETTINGS_FILE
 
 
 class SitemapSettingsScreen(BaseSettingsScreen):
@@ -73,6 +77,13 @@ class SitemapSettingsScreen(BaseSettingsScreen):
         settings["concurrency"] = self._int("#set-concurrency", 8)
         settings["timeout"] = self._int("#set-timeout", 30)
         settings["max_depth"] = self._int("#set-max-depth", 10)
+
+    def storage_paths(self) -> list[tuple[str, Path]]:
+        """Liefert die Persistenz-Pfade fuer den Speicherort-Tab."""
+        return [
+            (t("settings.storage.config"), SETTINGS_FILE),
+            (t("settings.storage.history"), History.HISTORY_FILE),
+        ]
 
     def _int(self, selector: str, default: int) -> int:
         """Liest einen Integer-Wert aus einem Input-Feld (mit Fallback)."""
