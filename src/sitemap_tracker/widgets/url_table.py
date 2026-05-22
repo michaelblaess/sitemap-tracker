@@ -192,6 +192,20 @@ class UrlTable(Static):
         return Text(label, style=style)
 
     @staticmethod
+    def _form_cell(result: CrawlResult) -> Text:
+        """Erzeugt die Zelle fuer die Formular-Spalte (lokalisiert).
+
+        Args:
+            result: Das CrawlResult.
+
+        Returns:
+            Rich Text mit dem lokalisierten Ja-Label (gruen) oder '-' (dim).
+        """
+        if result.has_form:
+            return Text(t("table.form_yes"), style="green")
+        return Text("-", style="dim")
+
+    @staticmethod
     def _http_status_cell(code: int) -> Text | str:
         """Erzeugt eine farbcodierte Zelle fuer den HTTP-Statuscode.
 
@@ -299,7 +313,7 @@ class UrlTable(Static):
             result: Das aktualisierte CrawlResult.
         """
         row_key = result.url
-        form_cell = Text("JA", style="green") if result.has_form else Text("-", style="dim")
+        form_cell = self._form_cell(result)
         table.update_cell(row_key, self._col_keys[1], self._status_cell(result))
         table.update_cell(row_key, self._col_keys[2], self._http_status_cell(result.http_status_code))
         table.update_cell(row_key, self._col_keys[3], str(result.depth))
@@ -326,7 +340,7 @@ class UrlTable(Static):
         for result in self._filtered:
             self._row_counter += 1
             url_cell = self._url_cell(result)
-            form_cell = Text("JA", style="green") if result.has_form else Text("-", style="dim")
+            form_cell = self._form_cell(result)
             time_str = f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-"
             table.add_row(
                 str(self._row_counter),
@@ -464,7 +478,7 @@ class UrlTable(Static):
             self._filtered.append(result)
             self._row_counter += 1
             table = self.query_one("#url-data", DataTable)
-            form_cell = Text("JA", style="green") if result.has_form else Text("-", style="dim")
+            form_cell = self._form_cell(result)
             time_str = f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-"
             table.add_row(
                 str(self._row_counter),

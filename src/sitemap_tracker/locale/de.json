@@ -159,6 +159,7 @@
   "table.columns.depth": "Tiefe",
   "table.columns.links": "Links",
   "table.columns.form": "Formular (?)",
+  "table.form_yes": "JA",
   "table.columns.time": "Zeit",
   "table.columns.url": "URL",
   "table.filter_placeholder": "Filter (URL, Status...)",
