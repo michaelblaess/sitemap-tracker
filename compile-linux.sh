@@ -57,6 +57,11 @@ started=$(date +%s)
 # eingebautes playwright-Plugin. Ein zusaetzliches --include-package-data=
 # playwright kollidiert hier mit dem Plugin ("data file
 # 'playwright/driver/node' conflicts with exe").
+#
+# Kein App-Icon: ein ELF-Binary kann kein Icon einbetten. Nuitkas
+# --linux-icon greift nur bei AppImage/--onefile - wir bauen --standalone.
+# Auf dem Desktop kommt das Icon ueblicherweise ueber eine .desktop-Datei
+# (Icon=...) das auf assets/icon.png zeigt; das ist Sache des Installers.
 "$python" -m nuitka \
     --standalone \
     --assume-yes-for-downloads \
