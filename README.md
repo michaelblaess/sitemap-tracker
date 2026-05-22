@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/icon-globe-dark.svg">
+    <img src="docs/icon-globe-light.svg" width="120" alt="Sitemap Tracker logo">
+  </picture>
+</p>
+
 # Sitemap Tracker
 
 <p align="center">

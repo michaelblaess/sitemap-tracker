@@ -52,19 +52,29 @@ $started = Get-Date
 # eingebautes playwright-Plugin. Ein zusaetzliches --include-package-data=
 # playwright kollidiert unter Linux mit dem Plugin ("data file
 # 'playwright/driver/node' conflicts with exe").
-& $python -m nuitka `
-    --standalone `
-    --assume-yes-for-downloads `
-    --remove-output `
-    --include-package=sitemap_tracker `
-    --include-package-data=sitemap_tracker `
-    --output-dir=$outDir `
-    --output-filename=sitemap-tracker.exe `
-    --company-name="Michael Blaess" `
-    --product-name="sitemap-tracker" `
-    --file-version=$version `
-    --product-version=$version `
-    $entry
+$nuitkaArgs = @(
+    "--standalone"
+    "--assume-yes-for-downloads"
+    "--remove-output"
+    "--include-package=sitemap_tracker"
+    "--include-package-data=sitemap_tracker"
+    "--output-dir=$outDir"
+    "--output-filename=sitemap-tracker.exe"
+    "--company-name=Michael Blaess"
+    "--product-name=sitemap-tracker"
+    "--file-version=$version"
+    "--product-version=$version"
+)
+
+# App-Icon in die EXE einbetten (assets\icon.ico, multi-resolution).
+$iconPath = Join-Path $root "assets\icon.ico"
+if (Test-Path $iconPath) {
+    $nuitkaArgs += "--windows-icon-from-ico=$iconPath"
+} else {
+    Write-Host "Hinweis: $iconPath fehlt - EXE wird ohne Icon gebaut." -ForegroundColor Yellow
+}
+
+& $python -m nuitka @nuitkaArgs $entry
 
 if ($LASTEXITCODE -ne 0) { throw "Nuitka-Build fehlgeschlagen (Exit $LASTEXITCODE)" }
 

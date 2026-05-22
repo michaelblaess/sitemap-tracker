@@ -57,15 +57,25 @@ started=$(date +%s)
 # eingebautes playwright-Plugin. Ein zusaetzliches --include-package-data=
 # playwright kollidiert mit dem Plugin ("data file
 # 'playwright/driver/node' conflicts with exe").
-"$python" -m nuitka \
-    --standalone \
-    --assume-yes-for-downloads \
-    --remove-output \
-    --include-package=sitemap_tracker \
-    --include-package-data=sitemap_tracker \
-    --output-dir="$out_dir" \
-    --output-filename=sitemap-tracker \
-    "$entry"
+nuitka_args=(
+    --standalone
+    --assume-yes-for-downloads
+    --remove-output
+    --include-package=sitemap_tracker
+    --include-package-data=sitemap_tracker
+    --output-dir="$out_dir"
+    --output-filename=sitemap-tracker
+)
+
+# App-Icon einbetten (Nuitka akzeptiert PNG fuer --macos-app-icon).
+icon_png="$root/assets/icon.png"
+if [ -f "$icon_png" ]; then
+    nuitka_args+=(--macos-app-icon="$icon_png")
+else
+    echo "Hinweis: $icon_png fehlt - Binary wird ohne Icon gebaut."
+fi
+
+"$python" -m nuitka "${nuitka_args[@]}" "$entry"
 
 if [ -d "$out_dir/__main__.dist" ]; then
     mv "$out_dir/__main__.dist" "$dist_dir"
