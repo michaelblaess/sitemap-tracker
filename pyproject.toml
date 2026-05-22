@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sitemap-tracker"
-version = "2.2.1"
+version = "2.3.0"
 description = "Sitemap Tracker - crawls websites, generates sitemap.xml, tracks dead links and SEO issues in a TUI"
 license = "Apache-2.0"
 requires-python = ">=3.12"
