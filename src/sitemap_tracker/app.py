@@ -65,7 +65,6 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         Binding("g", "save_forms", "placeholder"),
         Binding("f", "sitemap_diff", "placeholder"),
         Binding("d", "copy_detail", "placeholder"),
-        Binding("v", "view_source", "placeholder"),
         Binding("l", "toggle_log", "placeholder"),
         Binding("plus", "log_bigger", "+", key_display="+", show=False),
         Binding("minus", "log_smaller", "-", key_display="-", show=False),
@@ -106,6 +105,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self.max_depth = max_depth if max_depth is not None else self._settings.max_depth
         self.concurrency = concurrency if concurrency is not None else self._settings.concurrency
         self.timeout = timeout if timeout is not None else self._settings.timeout
+        # Wiederholungen bei Verbindungsproblemen (nur aus den Settings).
+        self.max_retries = self._settings.max_retries
         # CLI --no-headless erzwingt headless=False; sonst aus den Settings.
         self.headless = headless if not headless else (not self._settings.no_headless)
         # CLI --user-agent gewinnt, sonst Settings (leer = Crawler-Default).
@@ -154,7 +155,6 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "save_forms": t("binding.forms"),
             "sitemap_diff": t("binding.sitemap_diff"),
             "copy_detail": t("binding.copy_detail"),
-            "view_source": t("binding.view_source"),
             "toggle_log": t("binding.log"),
             "show_about": t("binding.info"),
         }
@@ -170,7 +170,6 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "show_history": t("tooltip.history"),
             "toggle_errors": t("tooltip.errors_only"),
             "copy_detail": t("tooltip.copy_detail"),
-            "view_source": t("tooltip.view_source"),
             "toggle_log": t("tooltip.log"),
             "show_about": t("tooltip.info"),
             "jira_report": t("tooltip.jira"),
@@ -367,6 +366,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             respect_robots=self.respect_robots,
             cookies=self.cookies,
             user_agent=self.user_agent,
+            max_retries=self.max_retries,
         )
 
         url_table = self.query_one("#url-table", UrlTable)
@@ -613,6 +613,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "concurrency": self._settings.concurrency,
             "timeout": self._settings.timeout,
             "max_depth": self._settings.max_depth,
+            "max_retries": self._settings.max_retries,
             "no_headless": self._settings.no_headless,
             "user_agent": self._settings.user_agent,
             "cookies": self._settings.cookies,
@@ -636,6 +637,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self.concurrency = int(result.get("concurrency", self.concurrency))  # type: ignore[arg-type]
         self.timeout = int(result.get("timeout", self.timeout))  # type: ignore[arg-type]
         self.max_depth = int(result.get("max_depth", self.max_depth))  # type: ignore[arg-type]
+        self.max_retries = int(result.get("max_retries", self.max_retries))  # type: ignore[arg-type]
 
         new_preview = bool(result.get("show_preview", self.show_preview))
         # Runtime-Flag sofort uebernehmen — sonst feuert _load_preview weiter
@@ -656,6 +658,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._settings.concurrency = self.concurrency
         self._settings.timeout = self.timeout
         self._settings.max_depth = self.max_depth
+        self._settings.max_retries = self.max_retries
         self._settings.show_preview = new_preview
         self._settings.no_headless = not self.headless
         self._settings.user_agent = self.user_agent
@@ -759,8 +762,6 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         stats_panel.show_url_detail(event.result)
         if self.show_preview:
             self._load_preview(event.result.url, self._preview_validator(event.result))
-        # Footer-Sichtbarkeit von 'view_source' haengt an der markierten Zeile.
-        self.refresh_bindings()
 
     def _refresh_detail_for_cursor(self) -> None:
         """Setzt die Detailansicht passend zur aktuell markierten Tabellen-Zeile."""
@@ -941,16 +942,6 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             )
         )
 
-    def action_view_source(self) -> None:
-        """Oeffnet die Quelltext-Ansicht fuer die markierte Fehlerseite.
-
-        Tastatur-Aequivalent zum ``[Im Quelltext zeigen]``-Klick im
-        Detail-Panel bzw. zum Kontextmenue-Eintrag — nimmt die erste
-        verweisende Seite der aktuell markierten 4xx/5xx-Zeile.
-        """
-        url_table = self.query_one("#url-table", UrlTable)
-        url_table.show_source_for_current()
-
     def action_show_about(self) -> None:
         """Zeigt den standardisierten About-Dialog aus textual-widgets an."""
         from textual_widgets import AboutScreen
@@ -1129,13 +1120,6 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             return True if self._results and self._official_sitemap_urls else None
         if action == "show_history":
             return None if self._crawl_running else True
-        if action == "view_source":
-            if self._crawl_running or not self._results:
-                return None
-            try:
-                return True if self.query_one("#url-table", UrlTable).has_source_for_current() else None
-            except Exception:
-                return None
         return True
 
     async def action_quit(self) -> None:

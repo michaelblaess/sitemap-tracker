@@ -59,6 +59,8 @@ class Settings:
         self.concurrency: int = 8
         self.timeout: int = 30
         self.max_depth: int = 10
+        # Wiederholungen bei Verbindungsproblemen (zusaetzlich zum 1. Versuch).
+        self.max_retries: int = 2
         self.show_preview: bool = False
         # Sichtbarer Browser (Debugging) — entspricht CLI --no-headless.
         self.no_headless: bool = False
@@ -78,6 +80,7 @@ class Settings:
             "concurrency": self.concurrency,
             "timeout": self.timeout,
             "max_depth": self.max_depth,
+            "max_retries": self.max_retries,
             "show_preview": self.show_preview,
             "no_headless": self.no_headless,
             "user_agent": self.user_agent,
@@ -106,6 +109,7 @@ class Settings:
                 settings.concurrency = int(data.get("concurrency", settings.concurrency))
                 settings.timeout = int(data.get("timeout", settings.timeout))
                 settings.max_depth = int(data.get("max_depth", settings.max_depth))
+                settings.max_retries = int(data.get("max_retries", settings.max_retries))
                 settings.show_preview = bool(data.get("show_preview", settings.show_preview))
                 settings.no_headless = bool(data.get("no_headless", settings.no_headless))
                 settings.user_agent = str(data.get("user_agent", settings.user_agent))

@@ -69,6 +69,13 @@ class SitemapSettingsScreen(BaseSettingsScreen):
                     id="set-max-depth",
                 )
             with Horizontal(classes="settings-row"):
+                yield Label(t("settings.max_retries_label"))
+                yield Input(
+                    value=str(self._settings.get("max_retries", 2)),
+                    type="integer",
+                    id="set-max-retries",
+                )
+            with Horizontal(classes="settings-row"):
                 yield Label(t("settings.no_headless_label"))
                 yield Checkbox(
                     t("settings.no_headless_checkbox"),
@@ -99,6 +106,7 @@ class SitemapSettingsScreen(BaseSettingsScreen):
         settings["concurrency"] = self._int("#set-concurrency", 8)
         settings["timeout"] = self._int("#set-timeout", 30)
         settings["max_depth"] = self._int("#set-max-depth", 10)
+        settings["max_retries"] = self._int("#set-max-retries", 2, minimum=0)
         settings["no_headless"] = self.query_one("#set-no-headless", Checkbox).value
         settings["user_agent"] = self.query_one("#set-user-agent", Input).value.strip()
         settings["cookies"] = self.query_one("#set-cookies", Input).value.strip()
@@ -111,9 +119,15 @@ class SitemapSettingsScreen(BaseSettingsScreen):
             (t("settings.storage.preview_cache"), PREVIEW_CACHE_DIR),
         ]
 
-    def _int(self, selector: str, default: int) -> int:
-        """Liest einen Integer-Wert aus einem Input-Feld (mit Fallback)."""
+    def _int(self, selector: str, default: int, minimum: int = 1) -> int:
+        """Liest einen Integer-Wert aus einem Input-Feld (mit Fallback).
+
+        Args:
+            selector: CSS-Selektor des Input-Felds.
+            default: Rueckgabewert bei ungueltiger Eingabe.
+            minimum: Untere Schranke (z.B. 0 fuer Retries, 1 fuer Anzahl-Felder).
+        """
         try:
-            return max(1, int(self.query_one(selector, Input).value))
+            return max(minimum, int(self.query_one(selector, Input).value))
         except (ValueError, TypeError):
             return default
