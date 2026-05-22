@@ -216,14 +216,20 @@ neu installieren; mit dem One-Click-Installer ist es automatisch.
 
 ## Neue Punkte (2026-05-22)
 
-### 2.10 Icon fuer die erzeugte EXE (Nuitka, Windows)
-- Ein `.ico` ins Repo legen (z.B. `assets/icon.ico` oder `docs/icon.ico`),
-  abgeleitet aus einem Logo/SVG (mehrere Aufloesungen 16/32/48/256 im ICO).
-- `compile-win64.ps1`: `--windows-icon-from-ico=<pfad>` ergaenzen.
-- macOS: TUI ohne `.app`-Bundle -> kein Icon (`--macos-app-icon` entfaellt).
-  Linux: Binaries haben kein eingebettetes Icon.
-- **Aufwand:** klein (sobald die `.ico` existiert) — der eigentliche Aufwand
-  ist das Icon-Design.
+### 2.10 Icon fuer die erzeugte EXE (Nuitka, Windows) — ERLEDIGT
+- ~~Ein `.ico` ins Repo legen~~ **Gemacht:** `assets/icon.ico`
+  (16/32/48/64/128/256) + `assets/icon.png` (512, macOS), reproduzierbar
+  ueber `assets/make_icon.py` (Pillow). Motiv: radialer Crawl-Graph -
+  heller Zentralknoten, sechs Status-Aussenknoten (Teal/Cyan/Gruen/Amber/
+  Violett + roter Dead-Link-Punkt) auf dunklem abgerundetem Tile.
+- ~~`compile-win64.ps1`: `--windows-icon-from-ico` ergaenzen~~ **Gemacht**
+  (conditional ueber Args-Array — baut auch ohne Icon weiter).
+- macOS: `compile-macos.sh` nutzt jetzt `--macos-app-icon=assets/icon.png`
+  (Nuitka akzeptiert PNG). Linux: ELF kann kein Icon einbetten
+  (`--linux-icon` nur bei AppImage/onefile) — im Skript dokumentiert,
+  Desktop-Icon kaeme ueber eine `.desktop`-Datei.
+- Icon bei Bedarf via `uv run --no-sync python assets/make_icon.py`
+  neu erzeugen/anpassen.
 
 ### 2.11 uvloop / winloop pruefen (async-Performance)
 Tipp von NSPC911 (Textual-Discord, Autor von **rovr** — Textual + ruff +
