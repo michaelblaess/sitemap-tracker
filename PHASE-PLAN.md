@@ -225,6 +225,47 @@ neu installieren; mit dem One-Click-Installer ist es automatisch.
 - **Aufwand:** klein (sobald die `.ico` existiert) — der eigentliche Aufwand
   ist das Icon-Design.
 
+### 2.11 uvloop / winloop pruefen (async-Performance)
+Tipp von NSPC911 (Textual-Discord, Autor von **rovr** — Textual + ruff +
+nuitka): fuer netzwerk-async-Last ist ein libuv-basierter Loop (uvloop auf
+Unix, winloop auf Windows) deutlich schneller als der Standard-asyncio-Loop.
+
+- **Vor dem Einbau MESSEN** — bei diesem Crawler dominieren Netzwerk-Latenz +
+  Concurrency-Cap, nicht der Loop-Overhead. Standalone-Crawl (nur httpx, ohne
+  TUI) mit/ohne uvloop benchmarken.
+- **Caveat Textual:** Textual besitzt den Event-Loop selbst -> `*.install()`
+  muss damit koexistieren (vor `app.run()`?). Kompatibilitaet erst pruefen.
+- **Caveat Playwright:** Preview/Render starten den Node-Treiber als
+  Subprozess; auf Windows haengt das am Proactor-Loop -> ob winloop die
+  asyncio-Subprocess-API sauber bedient, verifizieren (sonst startet der
+  Browser nicht).
+- **Plattform-Gating:** uvloop@Unix, winloop@Windows, Fallback auf
+  Standard-Loop.
+- **Referenz:** rovr (`NSPC911/rovr`) als Vorlage, wie winloop unter
+  Textual + Nuitka verdrahtet wird — falls eingebaut, dort abschauen.
+- **Groessere Hebel zuerst:** httpx-`AsyncClient` wiederverwenden
+  (Keep-Alive/Pooling), HTTP/2 aktivieren, Concurrency tunen — bringt hier
+  vermutlich mehr als der Loop-Tausch.
+
+### 2.12 BUG: Form-Spalte zeigt hartkodiertes "JA" (nicht lokalisiert) — ERLEDIGT
+~~In `widgets/url_table.py` war der Form-Indikator dreimal hartkodiert:
+`Text("JA", style="green")`. In der EN-UI stand damit faelschlich "JA".~~
+**Gefixt:** neuer i18n-Key `table.form_yes` (DE "JA" / EN "YES"), die drei
+Stellen ueber den DRY-Helfer `UrlTable._form_cell()` umgestellt (der `-`-Fall
+bleibt sprachneutral). Sichtbar gewesen seit v2.2.0 — gehoert in den naechsten
+Patch-Release (v2.2.1).
+
+### 2.13 UX: Lade-Hinweis bei "Im Quelltext zeigen"
+`fetch_and_locate` (Quell-Seite holen + Linkstelle suchen) dauert 1-2 s; der
+`SourceViewScreen` oeffnet aktuell erst NACH dem Fetch — dazwischen passiert
+sichtbar nichts ausser einem 2-s-Toast (`notify.source_loading`). Besser:
+- Modal **sofort** mit einem "Bitte warten / springe zur Fundstelle …"-
+  Zustand (Spinner) oeffnen, dann befuellen, sobald das HTML da ist; oder
+- mindestens einen deutlicheren, nicht-fluechtigen Lade-Indikator zeigen.
+- i18n-Key `source_view.loading` (DE "Bitte warten, springe zur Fundstelle …"
+  / EN "Please wait, jumping to the match …").
+**Aufwand:** klein-mittel.
+
 ### 3.3 Screenshots fuer DE- und EN-UI (README + GitHub-Pages)
 - App im **echten Terminal** je Sprache starten (`--lang de` / `--lang en`).
   NICHT ueber `run_test()` -> erzeugt Banding-Artefakte (siehe python-specialist).
