@@ -6,6 +6,7 @@ from urllib.parse import quote, urlparse, urlunparse
 
 from rich.console import Group
 from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
 from textual.app import ComposeResult
 from textual.containers import VerticalScroll
@@ -95,14 +96,13 @@ class StatsPanel(VerticalScroll):
         """Erstellt das Panel-Layout."""
         yield Static("", id="url-detail")
 
-    def _detail_line(
+    def _detail_value(
         self,
-        key: str,
         value: str,
         value_style: str = "",
         link_url: str = "",
     ) -> Text:
-        """Erzeugt eine Key-Value-Zeile mit fixer Key-Breite und URL-Umbruch.
+        """Erzeugt das Wert-Renderable einer Detail-Zeile (fold-Umbruch).
 
         Bei ``link_url`` wird der Wert ueber das App-weite Klick-Mixin als
         Textual-Action-Markup eingebettet — klickbar ohne CTRL, mit Hover-
@@ -110,33 +110,47 @@ class StatsPanel(VerticalScroll):
         Mixin nicht hat (z.B. in Unit-Tests ohne run_test).
 
         Args:
-            key: Beschriftung (links, dim).
-            value: Wert (rechts).
+            value: Der anzuzeigende Wert.
             value_style: Optionaler Rich-Style fuer den Wert.
             link_url: Optionale URL oder Pfad — macht den Wert klickbar.
 
         Returns:
-            Text-Objekt mit fold-overflow.
+            Text-Objekt mit fold-overflow (nur der Wert, ohne Label).
         """
-        line = Text(overflow="fold")
-        line.append(f" {key:<18} ", style="dim")
         if link_url:
             link_markup_fn = getattr(self.app, "link_markup", None)
             if callable(link_markup_fn):
                 sub = Text.from_markup(link_markup_fn(value, link_url), overflow="fold")
                 if value_style:
                     sub.stylize(value_style)
-                line.append_text(sub)
-                return line
+                return sub
             # Fallback: OSC-8 + CTRL+Klick
             style = f"{value_style} link {link_url}".strip()
-            line.append(value, style=style)
-            return line
+            return Text(value, style=style, overflow="fold")
         if value_style:
-            line.append(value, style=value_style)
-        else:
-            line.append(value)
-        return line
+            return Text(value, style=value_style, overflow="fold")
+        return Text(value, overflow="fold")
+
+    @staticmethod
+    def _kv_table(rows: list[tuple[str, Text]]) -> Table:
+        """Baut ein 2-spaltiges Grid (Label | Wert).
+
+        Der Wert bricht innerhalb seiner eigenen Spalte um (haengender
+        Einzug) und laeuft NICHT mehr in die Label-Spalte hinein. Die
+        Label-Spalte richtet sich nach dem laengsten Label des Panels.
+
+        Args:
+            rows: Liste aus (Label, Wert-Renderable)-Paaren.
+
+        Returns:
+            Ein expandierendes Rich-Grid mit zwei Spalten.
+        """
+        grid = Table.grid(expand=True, padding=(0, 1))
+        grid.add_column(no_wrap=True, style="dim", justify="left")
+        grid.add_column(ratio=1, overflow="fold")
+        for label, value in rows:
+            grid.add_row(label, value)
+        return grid
 
     @staticmethod
     def _panel(title: str, body: list, border_style: str = "grey37") -> Panel:
@@ -158,68 +172,68 @@ class StatsPanel(VerticalScroll):
             padding=(0, 1),
         )
 
-    def _seo_lines(self, seo: SeoInfo) -> list[Text]:
-        """Baut die SEO-Detailzeilen.
+    def _seo_rows(self, seo: SeoInfo) -> list[tuple[str, Text]]:
+        """Baut die SEO-Detailzeilen als Label/Wert-Paare.
 
         Args:
             seo:
                 Die SEO-Daten der Seite.
 
         Returns:
-            Liste der Detailzeilen, leer wenn keine SEO-Daten vorliegen.
+            Liste aus (Label, Wert)-Paaren, leer wenn keine SEO-Daten vorliegen.
         """
         if not (seo.title or seo.description or seo.h1_count):
             return []
         title = f"{seo.title}  ({len(seo.title)})" if seo.title else "-"
         description = f"{seo.description}  ({len(seo.description)})" if seo.description else "-"
         viewport = t("detail.form_yes") if seo.has_viewport else t("detail.form_no")
-        lines = [
-            self._detail_line(t("detail.seo_title"), title),
-            self._detail_line(t("detail.seo_desc"), description),
-            self._detail_line(t("detail.seo_h1"), str(seo.h1_count)),
-            self._detail_line(t("detail.seo_lang"), seo.lang or "-"),
-            self._detail_line(t("detail.seo_canonical"), _sanitize_url(seo.canonical) if seo.canonical else "-"),
-            self._detail_line(t("detail.seo_viewport"), viewport),
+        rows: list[tuple[str, Text]] = [
+            (t("detail.seo_title"), self._detail_value(title)),
+            (t("detail.seo_desc"), self._detail_value(description)),
+            (t("detail.seo_h1"), self._detail_value(str(seo.h1_count))),
+            (t("detail.seo_lang"), self._detail_value(seo.lang or "-")),
+            (t("detail.seo_canonical"), self._detail_value(_sanitize_url(seo.canonical) if seo.canonical else "-")),
+            (t("detail.seo_viewport"), self._detail_value(viewport)),
         ]
         if seo.robots:
-            lines.append(self._detail_line(t("detail.seo_robots"), seo.robots))
+            rows.append((t("detail.seo_robots"), self._detail_value(seo.robots)))
         if seo.og_tags:
-            lines.append(self._detail_line(t("detail.seo_og"), ", ".join(seo.og_tags)))
-        return lines
+            rows.append((t("detail.seo_og"), self._detail_value(", ".join(seo.og_tags))))
+        return rows
 
     def _page_panel(self, result: CrawlResult) -> Panel:
         """Baut das Panel mit den Basis-Infos der Seite."""
         safe_url = _sanitize_url(result.url)
-        lines = [
-            self._detail_line(t("detail.url"), safe_url, "bold", link_url=safe_url),
-            self._detail_line(t("detail.status"), f"{result.status_icon} {result.status.value}"),
+        rows: list[tuple[str, Text]] = [
+            (t("detail.url"), self._detail_value(safe_url, "bold", link_url=safe_url)),
+            (t("detail.status"), self._detail_value(f"{result.status_icon} {result.status.value}")),
         ]
         if result.redirect_url:
             safe_redirect = _sanitize_url(result.redirect_url)
-            lines.append(self._detail_line(t("detail.redirect"), safe_redirect, link_url=safe_redirect))
-        lines.append(
-            self._detail_line(t("detail.http"), str(result.http_status_code) if result.http_status_code else "-")
+            rows.append((t("detail.redirect"), self._detail_value(safe_redirect, link_url=safe_redirect)))
+        rows.append(
+            (t("detail.http"), self._detail_value(str(result.http_status_code) if result.http_status_code else "-"))
         )
-        lines.append(self._detail_line(t("detail.depth"), str(result.depth)))
-        lines.append(self._detail_line(t("detail.links"), str(result.links_found)))
-        lines.append(self._detail_line(t("detail.load_time"), _format_load_time(result.load_time_ms)))
-        lines.append(self._detail_line(t("detail.size"), _format_size(result.page_size)))
+        rows.append((t("detail.depth"), self._detail_value(str(result.depth))))
+        rows.append((t("detail.links"), self._detail_value(str(result.links_found))))
+        rows.append((t("detail.load_time"), self._detail_value(_format_load_time(result.load_time_ms))))
+        rows.append((t("detail.size"), self._detail_value(_format_size(result.page_size))))
         form_value = t("detail.form_yes") if result.has_form else t("detail.form_no")
-        lines.append(self._detail_line(t("detail.form"), form_value, "green" if result.has_form else "dim"))
+        rows.append((t("detail.form"), self._detail_value(form_value, "green" if result.has_form else "dim")))
         if result.content_type:
-            lines.append(self._detail_line(t("detail.content_type"), result.content_type))
+            rows.append((t("detail.content_type"), self._detail_value(result.content_type)))
         if result.last_modified:
-            lines.append(self._detail_line(t("detail.last_modified"), result.last_modified))
+            rows.append((t("detail.last_modified"), self._detail_value(result.last_modified)))
         if result.parent_url:
             safe_parent = _sanitize_url(result.parent_url)
-            lines.append(self._detail_line(t("detail.parent"), safe_parent, link_url=safe_parent))
+            rows.append((t("detail.parent"), self._detail_value(safe_parent, link_url=safe_parent)))
         # Tech-Stack inline mitnehmen — eine knappe Zeile, dafuer kein
         # eigenes 1-Zeilen-Panel.
         if result.tech:
-            lines.append(self._detail_line(t("detail.tech"), ", ".join(result.tech)))
+            rows.append((t("detail.tech"), self._detail_value(", ".join(result.tech))))
         if result.error_message:
-            lines.append(self._detail_line(t("detail.error"), result.error_message, "red"))
-        return self._panel(t("detail.page_heading"), lines)
+            rows.append((t("detail.error"), self._detail_value(result.error_message, "red")))
+        return self._panel(t("detail.page_heading"), [self._kv_table(rows)])
 
     def _issues_panel(self, result: CrawlResult) -> Panel | None:
         """Panel mit erkannten Problemen — None wenn keine, dann wird nichts gezeigt."""
@@ -291,12 +305,12 @@ class StatsPanel(VerticalScroll):
             panels.append(self._referring_panel(result))
 
         if result.response_headers:
-            http_lines = [self._detail_line(name, value) for name, value in result.response_headers.items()]
-            panels.append(self._panel(t("detail.http_heading"), http_lines))
+            http_rows = [(name, self._detail_value(value)) for name, value in result.response_headers.items()]
+            panels.append(self._panel(t("detail.http_heading"), [self._kv_table(http_rows)]))
 
-        seo_lines = self._seo_lines(result.seo)
-        if seo_lines:
-            panels.append(self._panel(t("detail.seo_heading"), seo_lines))
+        seo_rows = self._seo_rows(result.seo)
+        if seo_rows:
+            panels.append(self._panel(t("detail.seo_heading"), [self._kv_table(seo_rows)]))
 
         detail = self.query_one("#url-detail", Static)
         detail.update(Group(*panels))
