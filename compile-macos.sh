@@ -67,12 +67,13 @@ nuitka_args=(
     --output-filename=sitemap-tracker
 )
 
-# App-Icon einbetten (Nuitka akzeptiert PNG fuer --macos-app-icon).
-icon_png="$root/assets/icon.png"
-if [ -f "$icon_png" ]; then
-    nuitka_args+=(--macos-app-icon="$icon_png")
+# App-Icon einbetten. Natives .icns verwenden - ein PNG braeuchte hier sonst
+# das Zusatzpaket imageio (Nuitka: "Need to install 'imageio' ...").
+icon_icns="$root/assets/icon.icns"
+if [ -f "$icon_icns" ]; then
+    nuitka_args+=(--macos-app-icon="$icon_icns")
 else
-    echo "Hinweis: $icon_png fehlt - Binary wird ohne Icon gebaut."
+    echo "Hinweis: $icon_icns fehlt - Binary wird ohne Icon gebaut."
 fi
 
 "$python" -m nuitka "${nuitka_args[@]}" "$entry"

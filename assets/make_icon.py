@@ -13,7 +13,8 @@ Drei Darstellungs-Varianten (gleiche Geometrie):
 Die Rasterbilder (.ico/.png) nutzen die "tile"-Variante mit 4x-Supersampling.
 Die SVGs kommen aus derselben Geometrie und bleiben so deckungsgleich. Erzeugt:
 - assets/icon.ico         (16/32/48/64/128/256 px)  - --windows-icon-from-ico
-- assets/icon.png         (512 px)                   - --macos-app-icon, og:image
+- assets/icon.icns        (1024 px, nativ)           - --macos-app-icon
+- assets/icon.png         (512 px)                   - og:image / Social-Card
 - assets/icon.svg         (tile, skalierbar)         - branded Logo
 - assets/icon-dark.svg    (transparent, fuer dunkle Untergruende)
 - assets/icon-light.svg   (transparent, fuer helle Untergruende)
@@ -265,11 +266,15 @@ def build_svg(variant: str) -> str:
 def main() -> None:
     """Rendert das Master-Icon und schreibt .ico + .png + SVG-Varianten."""
     assets = Path(__file__).resolve().parent
-    master = build_master().resize((_BASE, _BASE), Image.Resampling.LANCZOS)
+    master_full = build_master()  # 1024 px (256 * _SS)
+    master = master_full.resize((_BASE, _BASE), Image.Resampling.LANCZOS)
 
     ico_sizes = [(16, 16), (32, 32), (48, 48), (64, 64), (128, 128), (256, 256)]
     master.save(assets / "icon.ico", sizes=ico_sizes)
-    master.resize((512, 512), Image.Resampling.LANCZOS).save(assets / "icon.png")
+    master_full.resize((512, 512), Image.Resampling.LANCZOS).save(assets / "icon.png")
+    # Natives macOS-Icon (1024 px) - Nuitkas --macos-app-icon nimmt .icns direkt;
+    # ein PNG braeuchte dort sonst das Zusatzpaket imageio.
+    master_full.save(assets / "icon.icns")
 
     (assets / "icon.svg").write_text(build_svg("tile"), encoding="utf-8")
     (assets / "icon-dark.svg").write_text(build_svg("dark"), encoding="utf-8")
@@ -279,6 +284,7 @@ def main() -> None:
 
     print(f"icon.ico geschrieben ({', '.join(f'{w}x{h}' for w, h in ico_sizes)})")
     print("icon.png geschrieben (512x512)")
+    print("icon.icns geschrieben (1024x1024)")
     print("icon.svg / icon-dark.svg / icon-light.svg geschrieben")
     print("icon-globe-dark.svg / icon-globe-light.svg geschrieben")
 
