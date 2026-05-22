@@ -159,6 +159,7 @@
   "table.columns.depth": "Depth",
   "table.columns.links": "Links",
   "table.columns.form": "Form (?)",
+  "table.form_yes": "YES",
   "table.columns.time": "Time",
   "table.columns.url": "URL",
   "table.filter_placeholder": "Filter (URL, status...)",
