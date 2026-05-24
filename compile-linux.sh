@@ -62,6 +62,13 @@ started=$(date +%s)
 # --linux-icon greift nur bei AppImage/--onefile - wir bauen --standalone.
 # Auf dem Desktop kommt das Icon ueblicherweise ueber eine .desktop-Datei
 # (Icon=...) das auf assets/icon.png zeigt; das ist Sache des Installers.
+# Nuitka als Build-Tool sicherstellen (kein Dev-Dep, wird ad-hoc installiert).
+# 'uv sync' ohne --inexact entfernt es wieder, daher: nach jedem Sync pruefen.
+if ! "$python" -m nuitka --version >/dev/null 2>&1; then
+    echo "Nuitka fehlt im venv - installiere..."
+    uv pip install nuitka || { echo "Nuitka-Installation fehlgeschlagen" >&2; exit 1; }
+fi
+
 "$python" -m nuitka \
     --standalone \
     --assume-yes-for-downloads \
