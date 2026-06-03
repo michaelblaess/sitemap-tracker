@@ -96,7 +96,7 @@ sitemap-tracker https://example.com --cookie session=abc123
 |---|---|
 | `c` | Crawl starten (URL-Dialog) |
 | `x` | Crawl abbrechen / JSON-Fehlerbericht |
-| `m` | Sitemap speichern |
+| `m` | Sitemap speichern (Speichern-unter-Dialog) |
 | `s` | Einstellungen |
 | `g` | Formular-Report exportieren (JSON) |
 | `j` | JIRA-Tabelle in Zwischenablage |
@@ -124,7 +124,7 @@ URLs im Log, im Header und im Detail-Panel sind ohne festgehaltenes Strg klickba
 - **Dead-Link-Quelltext-Viewer**: Für jede 4xx/5xx-Seite springst du direkt in den HTML-Quelltext der verweisenden Seite und siehst exakt die Zeile mit dem defekten Link — Pygments-eingefärbt, die Treffer-Zeile in warmem Gold hervorgehoben. Von dort: Quell-URL im Browser öffnen, ein paste-fertiges Snippet (defekte URL + ±3 Zeilen Kontext + Zeilennummer) in die Zwischenablage kopieren, oder das komplette HTML als Beweisstück speichern
 - **Kontextmenü auf der Ergebnis-Tabelle**: Rechtsklick öffnet die fünf Bulk-Aktionen (Nur-Fehler-Filter, Sitemap als XML speichern, Fehlerbericht als JSON speichern, JIRA-Tabelle kopieren, Formular-Report). 4xx/5xx-Zeilen bekommen zusätzlich einen Direkteinstieg in den Quelltext-Viewer
 - **Live-TUI**: Fortschritt, Statistiken und URL-Details in Echtzeit — Ergebnis-Tabelle und Seitenbaum auf zwei Tabs verteilt
-- **Sortierbare Ergebnisse**: Klick auf eine Spaltenüberschrift sortiert die Tabelle (Status, HTTP, Tiefe, Links, Formular, Zeit, Größe, Datum, URL) — zweiter Klick kehrt um. Aktive Spalte mit ▲/▼-Pfeil gekennzeichnet
+- **Sortierbare Ergebnisse**: Klick auf eine Spaltenüberschrift sortiert die Tabelle (Status, HTTP, Tiefe, Links, Formular, Zeit, Größe, Datum, URL) — zweiter Klick kehrt um. Aktive Spalte mit ▲/▼-Pfeil gekennzeichnet. Beim Überfahren des "Links"-Spaltenkopfs erklärt ein Tooltip, dass dort die internen Links der Seite gezählt werden
 - **Datum & Größe direkt in der Tabelle**: Last-Modified-Datum und Seitengröße sind als eigene Spalten neben der URL sichtbar
 - **Klickbare Links**: URLs im Log, im Crawl-Header und im Detail-Panel öffnen mit einem einzelnen Klick (ohne Strg) im Standard-Browser; lokale Ergebnisdateien (sitemap.xml, JSON-Reports) öffnen sich im jeweiligen OS-Standardprogramm
 - **Seitenbaum**: Hierarchische Sicht aller gecrawlten URLs mit HTTP-Status, Dead-Link- und Nicht-in-Sitemap-Markern — eingebettet als Tab, Geschwister alphabetisch sortiert; der Tabellen-Filter wirkt auf den Baum mit (passende Knoten und ihre Vorfahren bleiben sichtbar)
@@ -134,12 +134,13 @@ URLs im Log, im Header und im Detail-Panel sind ohne festgehaltenes Strg klickba
 - **Footer-Tooltips**: Zu jedem Tastenkürzel erscheint beim Hovern ein ausführlicher Tooltip — auch zu den kryptischen wie JIRA-Tabelle, Sitemap-Diff oder Formular-Report
 - **Problem-Erkennung**: Markiert typische Schwachstellen pro Seite — HTTP-Fehler, fehlender/zu langer Titel & Description, fehlende H1/Viewport/Canonical, `noindex`, langsame Ladezeit, große Seite
 - **Tech-Stack-Erkennung**: Erkennt CMS, JS-/CSS-Frameworks und Server-Software jeder Seite
-- **Seiten-Vorschau**: Optionaler Screenshot der ausgewählten Seite direkt im Terminal (TGP/Sixel mit Half-Block-Fallback) — in den Einstellungen abschaltbar
+- **Seiten-Vorschau**: Optionaler Screenshot der ausgewählten Seite direkt im Terminal (TGP/Sixel mit Half-Block-Fallback) — in den Einstellungen abschaltbar. Vor dem Schuss wird der Cookie-Consent akzeptiert, auf Netzwerk-Ruhe gewartet und Lazy-Loading angestoßen, damit Hero-Bilder gerendert werden statt abgeschnitten zu sein. Eine Live-Phasenanzeige (Seite wird geladen, Consent wird akzeptiert, Bilder werden nachgeladen, Screenshot wird erstellt) erklärt, warum es 2-3 Sekunden dauern kann
+- **Speichern-unter-Dialog**: `m` öffnet einen Datei-Dialog zur Wahl des Speicherorts der `sitemap.xml`, mit Namensvorschlag vorbelegt und merkt sich den zuletzt genutzten Ordner
 - **Anpassbare Panels**: Splitter zum freien Anpassen von URL-Tabelle, Log und Statistik-Panel
 - **Log-Panel**: Rechtsklick-Kontextmenü — kopieren, in Datei exportieren oder ausblenden
 - **Einstellungen-Dialog**: Sprache, robots.txt, Playwright, Seiten-Vorschau, Concurrency, Timeout und Crawl-Tiefe — dauerhaft gespeichert
 - **Filter mit Verlauf**: URL-Tabelle nach URL/Status filtern; letzte Filterbegriffe im Dropdown
-- **Crawl-History**: Vergangene Crawls mit Datum, URL, Parametern und finalen Statistiken (gecrawlt / 200er / Fehler); Datum im Format der UI-Sprache (DE: `TT.MM.JJJJ`, EN: ISO)
+- **Crawl-History**: Vergangene Crawls mit Datum, URL, Parametern und finalen Statistiken (gecrawlt / 200er / Fehler); Datum im Format der UI-Sprache (DE: `TT.MM.JJJJ`, EN: ISO). Nach Auswahl einer URL aus der History blinkt die Footer-Taste `c` (Crawl) als Hinweis, dass du startklar bist
 
 ## Browser-Strategie
 

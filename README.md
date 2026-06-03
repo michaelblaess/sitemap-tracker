@@ -96,7 +96,7 @@ sitemap-tracker https://example.com --cookie session=abc123
 |---|---|
 | `c` | Start crawl (URL dialog) |
 | `x` | Cancel crawl / JSON error report |
-| `m` | Save sitemap |
+| `m` | Save sitemap (save-as dialog) |
 | `s` | Settings |
 | `g` | Export form report (JSON) |
 | `j` | JIRA table to clipboard |
@@ -124,7 +124,7 @@ URLs in the log, header and detail panel are clickable without holding Ctrl.
 - **Dead-link source viewer**: For every 4xx/5xx page, jump to the referring page's HTML and see the exact line that contains the broken link — Pygments-highlighted, the match line painted in a warm gold band. From there: open the source in your browser, copy a paste-ready snippet (broken URL + ±3 lines of context + line number) to the clipboard, or save the full HTML as evidence
 - **Results context menu**: Right-click on any results row for the five bulk actions (toggle errors-only filter, save sitemap as XML, save error report as JSON, copy JIRA table, generate forms report). 4xx/5xx rows additionally get a one-click jump into the broken-link source viewer
 - **Live TUI**: Progress, statistics and URL details in real time — results table and page tree split across two tabs
-- **Sortable results**: Click any column header (Status, HTTP, Depth, Links, Form, Time, Size, Date, URL) to sort — second click reverses. Active column gets a ▲/▼ marker
+- **Sortable results**: Click any column header (Status, HTTP, Depth, Links, Form, Time, Size, Date, URL) to sort — second click reverses. Active column gets a ▲/▼ marker. Hovering the "Links" header shows a tooltip clarifying it counts the internal links found on the page
 - **Date & size columns**: Last-Modified date and page size are shown directly in the results table, side by side with the URL
 - **Clickable links**: URLs in the log, crawl header and detail panel open in your default browser on a single click (no Ctrl required); local result files (sitemap.xml, JSON reports) open in the OS default app
 - **Page tree**: Hierarchical view of all crawled URLs with HTTP status, dead-link and not-in-sitemap markers — embedded as a tab, siblings sorted alphabetically; the table's filter applies to the tree as well (matching nodes plus their ancestors stay visible)
@@ -134,12 +134,13 @@ URLs in the log, header and detail panel are clickable without holding Ctrl.
 - **Footer tooltips**: Every shortcut shows a hover-tooltip explaining what it does — even the cryptic ones like JIRA table, sitemap diff or form report
 - **Issue detection**: Flags common problems per page — HTTP errors, missing/overlong title & description, missing H1/viewport/canonical, `noindex`, slow load, large page
 - **Tech-stack detection**: Detects the CMS, JS/CSS frameworks and server software of each page
-- **Page preview**: Optional in-terminal screenshot of the selected page (TGP/Sixel with half-block fallback) — toggle in settings
+- **Page preview**: Optional in-terminal screenshot of the selected page (TGP/Sixel with half-block fallback) — toggle in settings. Before the shot it accepts the cookie consent, waits for the network to settle and triggers lazy-loaded images, so hero images render instead of being cut off. A live phase indicator (loading page, accepting consent, loading images, capturing) explains why it can take 2-3 seconds
+- **Save-as dialog**: `m` opens a file dialog to choose where to write the `sitemap.xml`, pre-filled with a suggested name and remembering the last folder used
 - **Resizable panels**: Splitters to freely resize the URL table, log and stats panels
 - **Log panel**: Right-click context menu — copy, export to file, or hide
 - **Settings dialog**: Language, robots.txt, Playwright, page preview, concurrency, timeout and crawl depth — persisted across runs
 - **Filter with history**: Filter the URL table by URL/status; recent filter terms in a dropdown
-- **Crawl history**: Past crawls with date, URL, parameters and final stats (crawled / 2xx / errors); date in the UI's locale (DE: `dd.MM.yyyy`, EN: ISO)
+- **Crawl history**: Past crawls with date, URL, parameters and final stats (crawled / 2xx / errors); date in the UI's locale (DE: `dd.MM.yyyy`, EN: ISO). After picking a URL from the history, the footer `c` (crawl) key blinks to signal you are ready to start
 
 ## Browser Strategy
 
