@@ -15,6 +15,7 @@ dependencies = [
     "beautifulsoup4>=4.12.0",
     "lxml>=5.0.0",
     "textual-image[textual]>=0.12.0",
+    "textual-fspicker>=0.4.0",
     "Pillow>=10.0",
     "textual-themes @ git+https://github.com/michaelblaess/textual-themes.git",
     "textual-widgets @ git+https://github.com/michaelblaess/textual-widgets.git",
@@ -40,6 +41,13 @@ sitemap-tracker = "sitemap_tracker.__main__:main"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-v --tb=short"
+asyncio_mode = "auto"
+
+[[tool.mypy.overrides]]
+# textual-widgets/-image liefern keinen py.typed-Marker - ohne diesen
+# Override meldet mypy "missing library stubs or py.typed marker".
+module = ["textual_widgets.*", "textual_image.*"]
+ignore_missing_imports = true
 
 [tool.poe.tasks]
 run = { cmd = "python -m sitemap_tracker", help = "Startet sitemap-tracker" }

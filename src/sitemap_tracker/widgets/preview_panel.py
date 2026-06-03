@@ -163,6 +163,7 @@ class PreviewPanel(Widget):
             self._graphics_widget_cls = _load_graphics_widget_class(backend)
         self._loading_timer: Any = None
         self._loading_step: int = 0
+        self._loading_phase: str = "navigate"
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="preview-scroll"):
@@ -176,7 +177,7 @@ class PreviewPanel(Widget):
         """Zeigt den Auswahl-Hinweis beim Start."""
         self._set_status(t("preview.select"))
 
-    def _set_status(self, text: str) -> None:
+    def _set_status(self, text: str | Text) -> None:
         with contextlib.suppress(Exception):
             self.query_one("#preview-status", Static).update(text)
 
@@ -188,9 +189,10 @@ class PreviewPanel(Widget):
             widget.image = None  # type: ignore[attr-defined]
 
     def show_loading(self) -> None:
-        """Zeigt den Ladezustand an — mit wachsender Punkt-Animation."""
+        """Zeigt den Ladezustand an — mit Live-Phase und Punkt-Animation."""
         self._loading_step = 0
-        self._set_status(t("preview.loading"))
+        self._loading_phase = "navigate"
+        self._render_loading()
         if self._graphics_widget_cls is not None:
             self._clear_graphics_image()
         else:
@@ -202,11 +204,32 @@ class PreviewPanel(Widget):
                 self._loading_timer.stop()
         self._loading_timer = self.set_interval(0.4, self._tick_loading)
 
+    def set_phase(self, phase: str) -> None:
+        """Setzt die aktuell laufende Erzeugungs-Phase (live waehrend capture).
+
+        Args:
+            phase:
+                Semantischer Phasen-Schluessel aus dem PreviewService
+                ("navigate", "consent", "render", "capture").
+        """
+        self._loading_phase = phase
+        self._loading_step = 0
+        self._render_loading()
+
     def _tick_loading(self) -> None:
         """Aktualisiert die Lade-Animation um einen Punkt."""
         self._loading_step = (self._loading_step + 1) % 4
+        self._render_loading()
+
+    def _render_loading(self) -> None:
+        """Rendert die Phasen-Zeile (mit Punkten) plus erklaerenden Hinweis."""
         dots = "." * self._loading_step
-        self._set_status(t("preview.loading") + dots)
+        text = Text()
+        text.append(t(f"preview.phase.{self._loading_phase}"))
+        text.append(dots)
+        text.append("\n")
+        text.append(t("preview.loading_hint"), style="dim italic")
+        self._set_status(text)
 
     def _stop_loading_animation(self) -> None:
         if self._loading_timer is not None:

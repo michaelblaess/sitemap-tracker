@@ -12,7 +12,7 @@ from urllib.parse import quote, unquote, urldefrag, urljoin, urlparse, urlunpars
 
 import httpx
 from bs4 import BeautifulSoup
-from playwright.async_api import Browser, Page, async_playwright
+from playwright.async_api import Browser, Page, Playwright, async_playwright
 
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, CrawlStats, PageStatus, friendly_error_message
@@ -109,7 +109,7 @@ class Crawler:
         self._cancelled = False
 
         # Playwright
-        self._playwright = None
+        self._playwright: Playwright | None = None
         self._browser: Browser | None = None
 
         # Domain-Filter: nur gleiche Domain crawlen
@@ -448,7 +448,7 @@ class Crawler:
                 self._stats.max_depth_reached = depth
 
             status_str = f"HTTP {result.http_status_code}" if result.http_status_code else "OK"
-            time_str = f"{result.load_time_ms:.0f}ms"
+            time_str = f"{result.load_time_ms / 1000:.1f}s" if result.load_time_ms else "-"
             log(f"  {status_str} | {time_str} | d={depth} | +{new_links} Links | {url}")
 
             on_result(result)
@@ -535,6 +535,10 @@ class Crawler:
         Returns:
             Liste von Tupeln (link_url, link_text).
         """
+        # Invariante: im Render-Modus ist der Browser gestartet.
+        if self._browser is None:
+            raise RuntimeError("Browser wurde nicht gestartet")
+
         page: Page | None = None
         try:
             page = await self._browser.new_page()
@@ -605,7 +609,10 @@ class Crawler:
         links: list[tuple[str, str]] = []
 
         for tag in soup.find_all("a", href=True):
-            href = tag["href"].strip()
+            # bs4 typisiert Attribut-Werte als str | list[str]; href ist
+            # einwertig, eine etwaige Liste defensiv zusammenfuehren.
+            href_attr = tag["href"]
+            href = (href_attr if isinstance(href_attr, str) else " ".join(href_attr)).strip()
 
             # Leere und spezielle Links ueberspringen
             if not href or href.startswith(("#", "javascript:", "mailto:", "tel:", "data:")):
@@ -712,6 +719,10 @@ class Crawler:
         Returns:
             Playwright Browser-Instanz.
         """
+        # Invariante: _launch_browser wird nur nach _playwright.start() gerufen.
+        if self._playwright is None:
+            raise RuntimeError("Playwright wurde nicht gestartet")
+
         launch_args = [
             "--disable-gpu",
             "--disable-dev-shm-usage",

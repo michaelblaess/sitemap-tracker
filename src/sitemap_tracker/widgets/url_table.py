@@ -8,7 +8,9 @@ from collections.abc import Callable
 from rich.text import Text
 from textual import events
 from textual.app import ComposeResult
+from textual.coordinate import Coordinate
 from textual.message import Message
+from textual.timer import Timer
 from textual.widgets import DataTable, Input, Static, TabbedContent, TabPane
 from textual_widgets import ContextMenuItem, ContextMenuScreen, SearchInputWithHistory
 
@@ -50,6 +52,37 @@ def _format_last_modified(raw: str) -> str:
 
 # Spinner-Frames fuer CRAWLING-Status
 SPINNER_FRAMES = [">  ", ">> ", ">>>", " >>", "  >", "   "]
+
+
+class HeaderTooltipDataTable(DataTable[Text]):
+    """DataTable, die beim Hovern eines Spaltenkopfs einen Tooltip anzeigt.
+
+    Textuals DataTable kennt keine Tooltips pro Spaltenkopf. Beim Mausziehen
+    setzt sie aber ``hover_coordinate``; der Spaltenkopf liegt auf Zeile -1.
+    Diese Subklasse haengt sich an den ``watch_hover_coordinate``-Watcher und
+    setzt den Widget-Tooltip auf den fuer die gehoverte Spalte hinterlegten
+    Text (oder None, sobald die Maus wieder ueber Datenzeilen steht).
+    """
+
+    def __init__(self, *args: object, **kwargs: object) -> None:
+        super().__init__(*args, **kwargs)  # type: ignore[arg-type]
+        # Spaltenindex -> Tooltip-Text. Per set_header_tooltips() gefuellt.
+        self.header_tooltips: dict[int, str] = {}
+
+    def set_header_tooltips(self, tooltips: dict[int, str]) -> None:
+        """Legt die Tooltips pro Spaltenindex fest.
+
+        Args:
+            tooltips:
+                Mapping Spaltenindex -> anzuzeigender Tooltip-Text.
+        """
+        self.header_tooltips = dict(tooltips)
+
+    def watch_hover_coordinate(self, old: Coordinate, value: Coordinate) -> None:
+        """Setzt den Tooltip, wenn ein Spaltenkopf (Zeile -1) gehovert wird."""
+        super().watch_hover_coordinate(old, value)
+        # Zeile -1 ist der Spaltenkopf; Datenzeilen haben row >= 0.
+        self.tooltip = self.header_tooltips.get(value.column) if value.row == -1 else None
 
 
 class UrlTable(Static):
@@ -99,7 +132,7 @@ class UrlTable(Static):
         self._filter_text: str = ""
         self._row_counter: int = 0
         self._spinner_frame: int = 0
-        self._spinner_timer = None
+        self._spinner_timer: Timer | None = None
         self._sitemap_urls: set[str] = set()
         self._known_urls: set[str] = set()
         self._auto_scroll: bool = True
@@ -121,13 +154,13 @@ class UrlTable(Static):
         )
         with TabbedContent(id="url-tabs"):
             with TabPane(t("table.tab_results"), id="tab-results"):
-                yield DataTable(id="url-data", cursor_type="row")
+                yield HeaderTooltipDataTable(id="url-data", cursor_type="row")
             with TabPane(t("table.tab_tree"), id="tab-tree"):
                 yield PageTree(id="page-tree")
 
     def on_mount(self) -> None:
         """Initialisiert die Tabellenspalten und startet den Spinner-Timer."""
-        table = self.query_one("#url-data", DataTable)
+        table = self.query_one("#url-data", HeaderTooltipDataTable)
         self._base_column_labels = [
             t("table.columns.number"),
             t("table.columns.status"),
@@ -141,6 +174,8 @@ class UrlTable(Static):
             t("table.columns.url"),
         ]
         self._col_keys = table.add_columns(*self._base_column_labels)
+        # Tooltip fuer den Links-Spaltenkopf (Index 4).
+        table.set_header_tooltips({4: t("table.tooltip.links")})
         self._spinner_timer = self.set_interval(0.3, self._tick_spinner)
 
     def on_input_changed(self, event: Input.Changed) -> None:

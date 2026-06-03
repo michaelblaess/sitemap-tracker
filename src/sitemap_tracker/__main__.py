@@ -6,6 +6,10 @@ import argparse
 import contextlib
 import os
 import sys
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sys import UnraisableHookArgs
 
 # Frozen-EXE Erkennung (PyInstaller UND Nuitka):
 # PLAYWRIGHT_BROWSERS_PATH muss gesetzt werden BEVOR playwright importiert wird,
@@ -79,15 +83,15 @@ def _silence_windows_teardown_noise() -> None:
 
     prev = sys.unraisablehook
 
-    def _hook(unraisable: object) -> None:  # type: ignore[override]
-        exc = getattr(unraisable, "exc_value", None)
+    def _hook(unraisable: UnraisableHookArgs) -> None:
+        exc = unraisable.exc_value
         if isinstance(exc, ValueError) and "closed pipe" in str(exc):
             return
         if isinstance(exc, ResourceWarning):
             return
-        prev(unraisable)  # type: ignore[misc]
+        prev(unraisable)
 
-    sys.unraisablehook = _hook  # type: ignore[assignment]
+    sys.unraisablehook = _hook
 
     def _loop_exc_handler(loop: asyncio.AbstractEventLoop, context: dict) -> None:
         msg = str(context.get("message", ""))

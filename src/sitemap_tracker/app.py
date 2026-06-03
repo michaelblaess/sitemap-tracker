@@ -6,6 +6,7 @@ import asyncio
 import contextlib
 import dataclasses
 from datetime import datetime
+from pathlib import Path
 from urllib.parse import urlparse
 
 from rich.markup import escape as escape_markup
@@ -13,6 +14,7 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical
+from textual.widget import Widget
 from textual.widgets import Footer, Header
 from textual_themes import register_all
 from textual_widgets import (
@@ -116,7 +118,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
 
         # render/respect_robots: CLI ueberschreibt Settings
         # CLI --render setzt render=True, sonst aus Settings laden
-        self.render = render if render else self._settings.render
+        self.render_js = render if render else self._settings.render
         # CLI --ignore-robots setzt respect_robots=False, sonst aus Settings laden
         self.respect_robots = respect_robots if not respect_robots else self._settings.respect_robots
 
@@ -127,6 +129,12 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._crawl_running: bool = False
         self._results: list[CrawlResult] = []
         self._official_sitemap_urls: set[str] = set()
+        # Startklar nach History-Auswahl -> Footer-Taste "c" blinkt, bis der
+        # Crawl startet. Wird in _on_history_selected gesetzt.
+        self._crawl_ready: bool = False
+        self._attention_on: bool = False
+        # Startverzeichnis fuer den "Speichern unter"-Dialog der Sitemap.
+        self._last_export_dir: str = str(Path.home() / "Desktop")
         self._log_height: int = LOG_HEIGHT_DEFAULT
         self._stats_timer = None
         self.show_preview: bool = self._settings.show_preview
@@ -190,7 +198,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         yield Header()
         yield CrawlHeader(
             id="summary",
-            render=self.render,
+            render=self.render_js,
             respect_robots=self.respect_robots,
             concurrency=self.concurrency,
             timeout=self.timeout,
@@ -220,7 +228,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         if not self.show_preview:
             self.query_one("#preview-panel", PreviewPanel).display = False
 
-        mode = t("mode.playwright") if self.render else t("mode.httpx")
+        mode = t("mode.playwright") if self.render_js else t("mode.httpx")
         robots_info = t("log.robots_on") if self.respect_robots else t("log.robots_off")
         self._write_log(t("log.version", version=__version__))
         self._write_log(
@@ -250,6 +258,35 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             table.focus()
         except Exception:
             pass
+
+        # Blinkender Footer-Hinweis lenkt den Blick auf die naechste sinnvolle
+        # Aktion: ist nach einer History-Auswahl eine URL startklar, blinkt "c".
+        # Manuelles Toggle per Timer statt ANSI-blink (Windows-Terminal-robust).
+        self.set_interval(0.6, self._tick_attention)
+
+    def _tick_attention(self) -> None:
+        """Schaltet die Highlight-Klasse auf der Crawl-Taste an/aus (Blink)."""
+        target = "start_crawl" if self._crawl_ready and not self._crawl_running else ""
+        self._attention_on = not self._attention_on if target else False
+        key = self._footer_key("start_crawl")
+        if key is not None:
+            key.set_class(target == "start_crawl" and self._attention_on, "-attention")
+
+    def _footer_key(self, action: str) -> Widget | None:
+        """Findet die Footer-Taste zu einer Aktion (oder None).
+
+        Args:
+            action:
+                Name der Action (z.B. "start_crawl").
+
+        Returns:
+            Das FooterKey-Widget oder None, falls der Footer gerade fehlt.
+        """
+        with contextlib.suppress(Exception):
+            for footer_key in self.query("FooterKey"):
+                if getattr(footer_key, "action", "") == action:
+                    return footer_key
+        return None
 
     def _update_x_binding_label(self, label: str) -> None:
         """Aktualisiert das Binding-Label fuer die x-Taste.
@@ -318,6 +355,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             return
 
         self._crawl_running = True
+        self._crawl_ready = False
         self._results.clear()
         self._update_x_binding_label(t("binding.cancel"))
 
@@ -338,7 +376,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         log_panel.clear_log()
         self.query_one("#log-splitter", HorizontalSplitter).remove_class("hidden")
 
-        mode = t("mode.playwright") if self.render else t("mode.httpx_short")
+        mode = t("mode.playwright") if self.render_js else t("mode.httpx_short")
         self._write_log(t("log.start_crawl", url=self.start_url))
         self._write_log(t("log.crawl_config", mode=mode, max_depth=self.max_depth, concurrency=self.concurrency))
 
@@ -349,25 +387,26 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
                 max_depth=self.max_depth,
                 concurrency=self.concurrency,
                 timeout=self.timeout,
-                render=self.render,
+                render=self.render_js,
                 respect_robots=self.respect_robots,
                 user_agent=self.user_agent,
                 cookies=self.cookies,
             )
         )
 
-        self._crawler = Crawler(
+        crawler = Crawler(
             start_url=self.start_url,
             max_depth=self.max_depth,
             concurrency=self.concurrency,
             timeout=self.timeout,
-            render=self.render,
+            render=self.render_js,
             headless=self.headless,
             respect_robots=self.respect_robots,
             cookies=self.cookies,
             user_agent=self.user_agent,
             max_retries=self.max_retries,
         )
+        self._crawler = crawler
 
         url_table = self.query_one("#url-table", UrlTable)
         header = self.query_one("#summary", CrawlHeader)
@@ -376,7 +415,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         def on_result(result: CrawlResult) -> None:
             """Callback fuer jedes Crawl-Ergebnis."""
             url_table.update_result(result)
-            header.update_stats(self._crawler.stats)
+            # Lokale Referenz: im Closure ist crawler garantiert nicht None.
+            header.update_stats(crawler.stats)
 
         def on_log(msg: str) -> None:
             """Callback fuer Log-Nachrichten."""
@@ -561,18 +601,45 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self.notify(t("notify.error_report", filename=filename, count=len(errors)))
 
     def action_save_sitemap(self) -> None:
-        """Speichert die Sitemap als XML-Datei."""
+        """Oeffnet den Speichern-unter-Dialog fuer die Sitemap-XML."""
         if not self._results:
             self.notify(t("notify.no_results_crawl"), severity="warning")
             return
 
-        # Dateiname generieren
+        from textual_fspicker import FileSave, Filters
+
+        # Dateinamen-Vorschlag generieren.
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         hostname = urlparse(self.start_url).hostname or "unknown"
         hostname = hostname.replace(".", "-")
-        filename = f"sitemap_{hostname}_{timestamp}.xml"
+        suggested = f"sitemap_{hostname}_{timestamp}.xml"
 
-        self._do_save_sitemap(filename)
+        self.push_screen(
+            FileSave(
+                location=self._last_export_dir,
+                title=t("save_dialog.title"),
+                save_button=t("save_dialog.save_button"),
+                cancel_button=t("save_dialog.cancel_button"),
+                default_file=suggested,
+                filters=Filters(
+                    (t("save_dialog.filter_xml"), lambda p: p.suffix.lower() == ".xml"),
+                    (t("save_dialog.filter_all"), lambda p: True),
+                ),
+            ),
+            callback=self._on_sitemap_target_chosen,
+        )
+
+    def _on_sitemap_target_chosen(self, target: Path | None) -> None:
+        """Callback des Speichern-Dialogs: schreibt die Sitemap an den Zielpfad.
+
+        Args:
+            target:
+                Der gewaehlte Zielpfad oder None bei Abbruch.
+        """
+        if target is None:
+            return
+        self._last_export_dir = str(target.parent)
+        self._do_save_sitemap(str(target))
 
     def _do_save_sitemap(self, output_path: str) -> None:
         """Erzeugt und speichert die Sitemap.
@@ -633,11 +700,13 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             return
 
         self.respect_robots = bool(result.get("respect_robots", self.respect_robots))
-        self.render = bool(result.get("render", self.render))
-        self.concurrency = int(result.get("concurrency", self.concurrency))  # type: ignore[arg-type]
-        self.timeout = int(result.get("timeout", self.timeout))  # type: ignore[arg-type]
-        self.max_depth = int(result.get("max_depth", self.max_depth))  # type: ignore[arg-type]
-        self.max_retries = int(result.get("max_retries", self.max_retries))  # type: ignore[arg-type]
+        self.render_js = bool(result.get("render", self.render_js))
+        # Werte aus dem Settings-Dict sind als object typisiert - ueber str()
+        # in int wandeln (deckt int und numerische Strings ab).
+        self.concurrency = int(str(result.get("concurrency", self.concurrency)))
+        self.timeout = int(str(result.get("timeout", self.timeout)))
+        self.max_depth = int(str(result.get("max_depth", self.max_depth)))
+        self.max_retries = int(str(result.get("max_retries", self.max_retries)))
 
         new_preview = bool(result.get("show_preview", self.show_preview))
         # Runtime-Flag sofort uebernehmen — sonst feuert _load_preview weiter
@@ -654,7 +723,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self.cookies = parse_cookies(cookies_raw)
 
         self._settings.respect_robots = self.respect_robots
-        self._settings.render = self.render
+        self._settings.render = self.render_js
         self._settings.concurrency = self.concurrency
         self._settings.timeout = self.timeout
         self._settings.max_depth = self.max_depth
@@ -669,10 +738,10 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         # CrawlHeader-Konfiguration an die geaenderten Werte anpassen
         with contextlib.suppress(Exception):
             header = self.query_one("#summary", CrawlHeader)
-            header.update_config(self.render, self.respect_robots, self.concurrency, self.timeout, self.max_depth)
+            header.update_config(self.render_js, self.respect_robots, self.concurrency, self.timeout, self.max_depth)
 
         self._write_log(t("log.robots_respected") if self.respect_robots else t("log.robots_ignored"))
-        self._write_log(t("log.playwright_on") if self.render else t("log.playwright_off"))
+        self._write_log(t("log.playwright_on") if self.render_js else t("log.playwright_off"))
 
     def action_toggle_errors(self) -> None:
         """Schaltet den Error-Filter in der Tabelle um."""
@@ -724,13 +793,15 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             return
 
         self.start_url = entry.url
+        # Startklar: Footer-Taste "c" blinkt, bis der Crawl gestartet wird.
+        self._crawl_ready = True
 
         # UI aktualisieren
-        mode = t("mode.playwright") if self.render else t("mode.httpx")
+        mode = t("mode.playwright") if self.render_js else t("mode.httpx")
         self.sub_title = self.start_url
         header = self.query_one("#summary", CrawlHeader)
         header.update_config(
-            self.render,
+            self.render_js,
             self.respect_robots,
             self.concurrency,
             self.timeout,
@@ -811,7 +882,9 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         panel.show_loading()
         if self._preview_service is None:
             self._preview_service = PreviewService()
-        data = await self._preview_service.capture(url, validator)
+        # on_phase aktualisiert die Live-Phase im Panel. Der Worker laeuft im
+        # Textual-Event-Loop, daher ist der direkte Widget-Zugriff sicher.
+        data = await self._preview_service.capture(url, validator, on_phase=panel.set_phase)
         panel.show_preview(data)
 
     async def on_unmount(self) -> None:

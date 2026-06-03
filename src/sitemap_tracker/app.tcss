@@ -60,3 +60,13 @@ Screen {
 #summary {
     height: auto;
 }
+
+/* Aufmerksamkeits-Blink fuer die Crawl-Taste, wenn nach einer History-Auswahl
+   eine URL startklar ist. Die Klasse wird per Timer an/aus geschaltet
+   (_tick_attention) - terminal-robust statt unzuverlaessigem ANSI-blink. */
+Footer FooterKey.-attention .footer-key--key,
+Footer FooterKey.-attention .footer-key--description {
+    background: $accent;
+    color: auto;
+    text-style: bold;
+}

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import contextlib
 from collections import defaultdict, deque
+from typing import Any
 from urllib.parse import quote, unquote, urlparse, urlunparse
 
 from rich.text import Text
@@ -57,7 +58,7 @@ class PageTree(Widget):
     }
     """
 
-    def __init__(self, **kwargs: object) -> None:
+    def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self._results: list[CrawlResult] = []
         self._start_url: str = ""
@@ -278,8 +279,8 @@ class PageTree(Widget):
         if self._filter_text:
             tree.root.expand_all()
         else:
-            for child in tree.root.children:
-                child.expand()
+            for root_child in tree.root.children:
+                root_child.expand()
 
     def _make_label(self, url: str, result: CrawlResult | None) -> Text:
         """Baut das Knoten-Label mit Farbcodierung (gleiche Logik wie zuvor im Modal)."""
