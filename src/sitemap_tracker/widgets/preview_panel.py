@@ -164,6 +164,9 @@ class PreviewPanel(Widget):
         self._loading_timer: Any = None
         self._loading_step: int = 0
         self._loading_phase: str = "navigate"
+        # Merkt, ob aktuell ein TGP/Sixel-Bild gezeichnet ist. Nur dann muss
+        # beim Leeren ein voller Repaint die out-of-band Pixel ueberschreiben.
+        self._has_graphics_image: bool = False
 
     def compose(self) -> ComposeResult:
         with VerticalScroll(id="preview-scroll"):
@@ -184,9 +187,19 @@ class PreviewPanel(Widget):
     def _clear_graphics_image(self) -> None:
         if self._graphics_widget_cls is None:
             return
+        had_image = self._has_graphics_image
         with contextlib.suppress(Exception):
             widget = self.query_one("#preview-content", self._graphics_widget_cls)
             widget.image = None  # type: ignore[attr-defined]
+        self._has_graphics_image = False
+        # TGP/Sixel-Pixel liegen out-of-band im Terminal-Pixelpuffer. image=None
+        # malt die Zellen NICHT neu (render_lines gibt [] zurueck), und Pixel,
+        # die ueber die Widget-Region hinausragen, bleiben sonst als Artefakt
+        # stehen. Ein voller Screen-Repaint (gesamte Screen-Region dirty ->
+        # render_full_update) ueberschreibt alle Zellen und wischt sie weg.
+        if had_image:
+            with contextlib.suppress(Exception):
+                self.app.refresh(repaint=True)
 
     def show_loading(self) -> None:
         """Zeigt den Ladezustand an — mit Live-Phase und Punkt-Animation."""
@@ -262,6 +275,7 @@ class PreviewPanel(Widget):
             assert self._graphics_widget_cls is not None
             widget = self.query_one("#preview-content", self._graphics_widget_cls)
             widget.image = pil_img  # type: ignore[attr-defined]
+            self._has_graphics_image = True
             self._set_status("")
         except Exception:
             logger.debug("Grafik-Vorschau fehlgeschlagen", exc_info=True)
