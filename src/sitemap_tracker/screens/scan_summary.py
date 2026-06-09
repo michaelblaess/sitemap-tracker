@@ -146,6 +146,12 @@ class ScanSummaryScreen(ModalScreen[str | None]):
         row(t("summary.row_4xx"), s.total_4xx, err_style if s.total_4xx else "dim")
         row(t("summary.row_5xx"), s.total_5xx, err_style if s.total_5xx else "dim")
         row(t("summary.row_links"), s.total_links)
+        row(t("summary.row_sitemap_urls"), s.sitemap_urls, "bold")
+        row(
+            t("summary.row_resolved_redirects"),
+            s.resolved_redirects,
+            "cyan" if s.resolved_redirects else "dim",
+        )
         return table
 
     def _build_content(self) -> RenderableType:

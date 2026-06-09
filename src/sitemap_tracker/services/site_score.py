@@ -41,6 +41,8 @@ class SiteScore:
     total_4xx: int = 0
     total_5xx: int = 0
     total_links: int = 0  # Summe gefundener interner Links ueber alle Seiten
+    sitemap_urls: int = 0  # Anzahl URLs in der erzeugten Sitemap (200er + aufgeloeste Ziele)
+    resolved_redirects: int = 0  # davon: als Alias aufgeloeste Redirect-Ziele
 
     @property
     def grade(self) -> str:

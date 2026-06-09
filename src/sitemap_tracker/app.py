@@ -559,6 +559,11 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
 
         # Site-Score berechnen und merken (fuer die "z"-Zusammenfassung).
         self._last_score = compute_site_score(self._results, stats)
+        # Sitemap-Zusammensetzung ueber den Writer ermitteln (Single Source of
+        # Truth fuer die Redirect-Aufloesung) und in den Score uebernehmen.
+        sitemap_urls, resolved = SitemapWriter(self._results, base_url=self.start_url).plan()
+        self._last_score.sitemap_urls = sitemap_urls
+        self._last_score.resolved_redirects = resolved
         self._refresh_summary_binding()
 
         # Auto-Save wenn --output angegeben
@@ -719,11 +724,24 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             self.notify(t("notify.no_pages_for_sitemap"), severity="warning")
             return
 
-        http_200 = [r for r in self._results if r.http_status_code == 200]
         for path in written:
             self._write_log(t("log.sitemap_written", path=self.link_markup(path, path)))
 
-        self.notify(t("notify.sitemap_saved", path=written[0], count=len(http_200)))
+        # Aufgeloeste Redirect-Ziele (Alias-Faelle) einzeln ins Log
+        for target in writer.resolved_targets:
+            self._write_log(
+                t("log.sitemap_redirect_target", url=self.link_markup(target, target))
+            )
+
+        http_200 = [r for r in self._results if r.http_status_code == 200]
+        total = len(http_200) + len(writer.resolved_targets)
+        redirects = len(writer.resolved_targets)
+        if redirects:
+            self.notify(
+                t("notify.sitemap_saved_redirects", path=written[0], count=total, redirects=redirects)
+            )
+        else:
+            self.notify(t("notify.sitemap_saved", path=written[0], count=total))
 
     def action_show_settings(self) -> None:
         """Zeigt den Settings-Dialog (Sprache + Crawl-Optionen).

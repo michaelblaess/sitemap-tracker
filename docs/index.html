@@ -282,6 +282,11 @@
         <p>Bei über 50.000 URLs automatisch Sitemap-Index mit Teil-Sitemaps. Priority und lastmod werden automatisch gesetzt.</p>
       </div>
       <div class="feature-card">
+        <div class="feature-icon">↗️</div>
+        <h3>Redirect-Ziele auflösen (Alias auf gleichem Host)</h3>
+        <p>Eine Sitemap listet nur gecrawlte HTTP-200-Seiten — reine Weiterleitungen (301/302) bleiben draußen. <strong>Sonderfall:</strong> Zeigt ein Redirect auf eine Seite <em>auf demselben Host</em>, die sonst nicht gelistet ist (ein interner <em>Alias</em>, z.B. <code>/alter-pfad</code> → <code>/neuer-pfad</code>), würde dieses Ziel durchs Raster fallen. Der Writer nimmt deshalb das <strong>aufgelöste Ziel</strong> in die Sitemap auf. Drei Regeln halten das sauber und standardkonform: <strong>(1)</strong> ein bereits als 200 gelistetes Ziel wird übersprungen (kein Doppel-Scan), <strong>(2)</strong> mehrere Redirects auf dasselbe Ziel ergeben einen Eintrag, <strong>(3)</strong> nur Ziele auf <strong>exakt demselben Host</strong> — eine sitemap.xml ist laut Standard host-gebunden, also werden Schwester-Subdomains (z.B. <code>www.kunde.example</code>, <code>www.shop.kunde.example</code>) und fremde Domains ausgeschlossen. Der finale Status des Ziels wird nicht erneut geprüft, ein defektes Alias-Ziel taucht also als Fehler im nachgelagerten Scan auf.</p>
+      </div>
+      <div class="feature-card">
         <div class="feature-icon">📝</div>
         <h3>Formular-Erkennung</h3>
         <p>Erkennt &lt;form&gt;-Tags auf jeder Seite, markiert sie in der Tabelle und exportiert sie als JSON.</p>
