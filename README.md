@@ -105,6 +105,8 @@ sitemap-tracker https://example.com --cookie session=abc123
 | `d` | Copy URL details |
 | `l` | Toggle log |
 | `h` | History |
+| `z` | Crawl summary (score, findings) |
+| `?` | HTTP status code reference |
 | `i` | Info dialog |
 | `q` | Quit |
 
@@ -125,7 +127,10 @@ URLs in the log, header and detail panel are clickable without holding Ctrl.
 - **Results context menu**: Right-click on any results row for the five bulk actions (toggle errors-only filter, save sitemap as XML, save error report as JSON, copy JIRA table, generate forms report). 4xx/5xx rows additionally get a one-click jump into the broken-link source viewer
 - **Live TUI**: Progress, statistics and URL details in real time — results table and page tree split across two tabs
 - **Sortable results**: Click any column header (Status, HTTP, Depth, Links, Form, Time, Size, Date, URL) to sort — second click reverses. Active column gets a ▲/▼ marker. Hovering the "Links" header shows a tooltip clarifying it counts the internal links found on the page
-- **Date & size columns**: Last-Modified date and page size are shown directly in the results table, side by side with the URL
+- **Crawl summary**: When a crawl finishes, a modal shows a site score (0-100 %, share of error-free pages, with an A-F grade) and a findings table (pages crawled / error-free / with errors, HTTP status breakdown, internal links found). A "Save sitemap" button sits right next to "Close". Re-open it any time with `z`
+- **HTTP status code reference**: Press `?` for a quick lookup table of all common HTTP status codes, grouped by class (2xx/3xx/4xx/5xx) with meaning and explanation - handy to tell a 301 from a 307
+- **Proxy/SSO detection**: Before crawling, the start URL is probed once. If it is redirected to a foreign domain (typical of a proxy, an auth gateway such as Zscaler, or an SSO login like Microsoft), a warning modal explains the situation and the crawl is aborted - instead of silently returning just the seed URLs. Redirects within the same registrable domain (e.g. alias 301s to a sibling subdomain) do not trigger it
+- **Date & size columns**: Last-Modified date and page size are shown directly in the results table, side by side with the URL. **Note on size:** the "Size" value is the HTML document size (the delivered source). While crawling, resources such as images, CSS, JS and fonts are **not** loaded, so they do not count towards it - the real total page weight (as a browser reports it) is higher. Hovering the "Size" header explains this
 - **Clickable links**: URLs in the log, crawl header and detail panel open in your default browser on a single click (no Ctrl required); local result files (sitemap.xml, JSON reports) open in the OS default app
 - **Page tree**: Hierarchical view of all crawled URLs with HTTP status, dead-link and not-in-sitemap markers — embedded as a tab, siblings sorted alphabetically; the table's filter applies to the tree as well (matching nodes plus their ancestors stay visible)
 - **URL dialog**: `c` opens a dialog (pre-filled with the last URL) to enter or change the target URL — no restart needed

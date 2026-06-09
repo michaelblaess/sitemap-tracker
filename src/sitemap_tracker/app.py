@@ -36,7 +36,9 @@ from .models.sitemap_reader import discover_sitemap, load_sitemap_from_file, loa
 from .models.sitemap_writer import SitemapWriter
 from .services.crawler import Crawler
 from .services.preview_service import PreviewService
+from .services.proxy_detect import probe_proxy
 from .services.reporter import Reporter
+from .services.site_score import SiteScore, compute_site_score
 from .widgets.crawl_header import CrawlHeader
 from .widgets.preview_panel import PreviewPanel
 from .widgets.stats_panel import StatsPanel
@@ -68,6 +70,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         Binding("f", "sitemap_diff", "placeholder"),
         Binding("d", "copy_detail", "placeholder"),
         Binding("l", "toggle_log", "placeholder"),
+        Binding("z", "show_summary", "placeholder"),
+        Binding("question_mark", "show_http_codes", "placeholder", key_display="?"),
         Binding("plus", "log_bigger", "+", key_display="+", show=False),
         Binding("minus", "log_smaller", "-", key_display="-", show=False),
         Binding("i", "show_about", "placeholder"),
@@ -128,6 +132,9 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._crawler: Crawler | None = None
         self._crawl_running: bool = False
         self._results: list[CrawlResult] = []
+        # Site-Score des zuletzt abgeschlossenen Crawls (fuer die
+        # Zusammenfassung). None solange kein Crawl abgeschlossen wurde.
+        self._last_score: SiteScore | None = None
         self._official_sitemap_urls: set[str] = set()
         # Startklar nach History-Auswahl -> Footer-Taste "c" blinkt, bis der
         # Crawl startet. Wird in _on_history_selected gesetzt.
@@ -164,6 +171,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "sitemap_diff": t("binding.sitemap_diff"),
             "copy_detail": t("binding.copy_detail"),
             "toggle_log": t("binding.log"),
+            "show_summary": t("binding.summary"),
+            "show_http_codes": t("binding.http_codes"),
             "show_about": t("binding.info"),
         }
         # Tooltips fuer fortgeschrittene Befehle - werden im Footer beim
@@ -179,6 +188,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "toggle_errors": t("tooltip.errors_only"),
             "copy_detail": t("tooltip.copy_detail"),
             "toggle_log": t("tooltip.log"),
+            "show_summary": t("tooltip.summary"),
+            "show_http_codes": t("tooltip.http_codes"),
             "show_about": t("tooltip.info"),
             "jira_report": t("tooltip.jira"),
             "save_forms": t("tooltip.forms"),
@@ -357,6 +368,9 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._crawl_running = True
         self._crawl_ready = False
         self._results.clear()
+        # Score des vorigen Crawls verwerfen - die "z"-Taste bleibt aus, bis der
+        # neue Crawl abgeschlossen ist.
+        self._last_score = None
         self._update_x_binding_label(t("binding.cancel"))
 
         # URL-Tabelle leeren
@@ -379,6 +393,25 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         mode = t("mode.playwright") if self.render_js else t("mode.httpx_short")
         self._write_log(t("log.start_crawl", url=self.start_url))
         self._write_log(t("log.crawl_config", mode=mode, max_depth=self.max_depth, concurrency=self.concurrency))
+
+        # Vorab-Pruefung: faengt ein Proxy/Auth-Gateway/SSO die Anfragen ab?
+        # Landet die Start-URL nach Redirects auf einer FREMDEN Registrable-
+        # Domain, ist ein Crawl sinnlos (keine Inhaltsseiten erreichbar). Dann
+        # warnen und abbrechen, bevor die History gefuellt und gecrawlt wird.
+        proxy = await probe_proxy(
+            self.start_url,
+            cookies=self.cookies,
+            user_agent=self.user_agent,
+            timeout=self.timeout,
+        )
+        if proxy is not None:
+            self._write_log(t("log.proxy_detected", host=proxy.host))
+            self.sub_title = t("subtitle.proxy_detected")
+            self._crawl_running = False
+            from .screens.proxy_warning import ProxyWarningScreen
+
+            self.push_screen(ProxyWarningScreen(proxy))
+            return
 
         # History-Eintrag speichern
         History.add(
@@ -524,11 +557,42 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
 
         self.sub_title = t("subtitle.crawled", count=stats.total_crawled)
 
+        # Site-Score berechnen und merken (fuer die "z"-Zusammenfassung).
+        self._last_score = compute_site_score(self._results, stats)
+        self._refresh_summary_binding()
+
         # Auto-Save wenn --output angegeben
         if self.output_path:
             self._do_save_sitemap(self.output_path)
 
         self._crawler = None
+
+        # Zusammenfassung als Modal anzeigen - aber nur in der interaktiven
+        # Nutzung, nicht im Auto-Save-/Headless-Lauf (--output), der ohne
+        # Bedienung durchlaufen soll.
+        if not self.output_path:
+            from .screens.scan_summary import ScanSummaryScreen
+
+            self.push_screen(ScanSummaryScreen(self._last_score), callback=self._on_summary_closed)
+
+    def _refresh_summary_binding(self) -> None:
+        """Aktualisiert die Footer-Sichtbarkeit der Zusammenfassungs-Taste."""
+        with contextlib.suppress(Exception):
+            self.refresh_bindings()
+
+    def action_show_summary(self) -> None:
+        """Zeigt die Zusammenfassung des letzten Crawls erneut an."""
+        if self._last_score is None:
+            self.notify(t("notify.no_summary"), severity="warning")
+            return
+        from .screens.scan_summary import ScanSummaryScreen
+
+        self.push_screen(ScanSummaryScreen(self._last_score), callback=self._on_summary_closed)
+
+    def _on_summary_closed(self, result: str | None) -> None:
+        """Callback der Zusammenfassung: bei "save" den Sitemap-Dialog oeffnen."""
+        if result == "save":
+            self.action_save_sitemap()
 
     def action_action_x(self) -> None:
         """Doppelbelegung: Waehrend Crawl abbrechen, danach Fehlerbericht erzeugen."""
@@ -1015,6 +1079,12 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             )
         )
 
+    def action_show_http_codes(self) -> None:
+        """Zeigt die HTTP-Statuscode-Referenz aus textual-widgets an."""
+        from textual_widgets import HttpStatusScreen
+
+        self.push_screen(HttpStatusScreen(lang=current_language()))
+
     def action_show_about(self) -> None:
         """Zeigt den standardisierten About-Dialog aus textual-widgets an."""
         from textual_widgets import AboutScreen
@@ -1193,6 +1263,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             return True if self._results and self._official_sitemap_urls else None
         if action == "show_history":
             return None if self._crawl_running else True
+        if action == "show_summary":
+            return True if self._last_score is not None else None
         return True
 
     async def action_quit(self) -> None:

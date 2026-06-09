@@ -174,8 +174,13 @@ class UrlTable(Static):
             t("table.columns.url"),
         ]
         self._col_keys = table.add_columns(*self._base_column_labels)
-        # Tooltip fuer den Links-Spaltenkopf (Index 4).
-        table.set_header_tooltips({4: t("table.tooltip.links")})
+        # Tooltips fuer Spaltenkoepfe: Links (Index 4), Groesse (Index 7).
+        table.set_header_tooltips(
+            {
+                4: t("table.tooltip.links"),
+                7: t("table.tooltip.size"),
+            }
+        )
         self._spinner_timer = self.set_interval(0.3, self._tick_spinner)
 
     def on_input_changed(self, event: Input.Changed) -> None:

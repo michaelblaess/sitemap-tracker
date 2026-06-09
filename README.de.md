@@ -105,6 +105,8 @@ sitemap-tracker https://example.com --cookie session=abc123
 | `d` | URL-Details kopieren |
 | `l` | Log ein/aus |
 | `h` | History |
+| `z` | Crawl-Zusammenfassung (Score, Ergebnisse) |
+| `?` | HTTP-Statuscode-Referenz |
 | `i` | Info-Dialog |
 | `q` | Beenden |
 
@@ -125,7 +127,10 @@ URLs im Log, im Header und im Detail-Panel sind ohne festgehaltenes Strg klickba
 - **Kontextmenü auf der Ergebnis-Tabelle**: Rechtsklick öffnet die fünf Bulk-Aktionen (Nur-Fehler-Filter, Sitemap als XML speichern, Fehlerbericht als JSON speichern, JIRA-Tabelle kopieren, Formular-Report). 4xx/5xx-Zeilen bekommen zusätzlich einen Direkteinstieg in den Quelltext-Viewer
 - **Live-TUI**: Fortschritt, Statistiken und URL-Details in Echtzeit — Ergebnis-Tabelle und Seitenbaum auf zwei Tabs verteilt
 - **Sortierbare Ergebnisse**: Klick auf eine Spaltenüberschrift sortiert die Tabelle (Status, HTTP, Tiefe, Links, Formular, Zeit, Größe, Datum, URL) — zweiter Klick kehrt um. Aktive Spalte mit ▲/▼-Pfeil gekennzeichnet. Beim Überfahren des "Links"-Spaltenkopfs erklärt ein Tooltip, dass dort die internen Links der Seite gezählt werden
-- **Datum & Größe direkt in der Tabelle**: Last-Modified-Datum und Seitengröße sind als eigene Spalten neben der URL sichtbar
+- **Crawl-Zusammenfassung**: Am Ende eines Crawls zeigt ein Modal einen Site-Score (0-100 %, Anteil fehlerfreier Seiten, mit Note A-F) und eine Ergebnis-Tabelle (gecrawlte / fehlerfreie / fehlerhafte Seiten, HTTP-Status-Verteilung, gefundene interne Links). Neben "Schließen" gibt es einen Button "Sitemap speichern". Mit `z` jederzeit wieder aufrufbar
+- **HTTP-Statuscode-Referenz**: Mit `?` öffnet sich eine schnelle Nachschlage-Tabelle aller gängigen HTTP-Statuscodes, gruppiert nach Klasse (2xx/3xx/4xx/5xx) mit Bedeutung und Erklärung - praktisch, um etwa einen 301 von einem 307 zu unterscheiden
+- **Proxy-/SSO-Erkennung**: Vor dem Crawl wird die Start-URL einmal geprüft. Wird sie auf eine fremde Domain umgeleitet (typisch für einen Proxy, ein Auth-Gateway wie Zscaler oder ein SSO-Login wie Microsoft), erklärt ein Warn-Modal die Lage und der Crawl wird abgebrochen - statt stillschweigend nur die Seed-URLs zu liefern. Weiterleitungen innerhalb derselben Registrable-Domain (z. B. Alias-301 auf eine Schwester-Subdomain) lösen es nicht aus
+- **Datum & Größe direkt in der Tabelle**: Last-Modified-Datum und Seitengröße sind als eigene Spalten neben der URL sichtbar. **Hinweis zur Größe:** Der "Größe"-Wert ist die HTML-Dokumentgröße (der gelieferte Quelltext). Beim Crawlen werden Ressourcen wie Bilder, CSS, JS und Fonts **nicht** geladen und zählen daher nicht mit - die echte Gesamt-Seitengröße (wie ein Browser sie meldet) ist höher. Beim Überfahren des "Größe"-Spaltenkopfs wird das erklärt
 - **Klickbare Links**: URLs im Log, im Crawl-Header und im Detail-Panel öffnen mit einem einzelnen Klick (ohne Strg) im Standard-Browser; lokale Ergebnisdateien (sitemap.xml, JSON-Reports) öffnen sich im jeweiligen OS-Standardprogramm
 - **Seitenbaum**: Hierarchische Sicht aller gecrawlten URLs mit HTTP-Status, Dead-Link- und Nicht-in-Sitemap-Markern — eingebettet als Tab, Geschwister alphabetisch sortiert; der Tabellen-Filter wirkt auf den Baum mit (passende Knoten und ihre Vorfahren bleiben sichtbar)
 - **URL-Dialog**: `c` öffnet einen Dialog (mit der zuletzt verwendeten URL vorbelegt), um die Ziel-URL einzugeben oder zu ändern — ohne Neustart
