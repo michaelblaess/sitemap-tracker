@@ -18,12 +18,18 @@ class RobotsChecker:
         self._sitemaps: list[str] = []
         self._loaded = False
 
-    async def load(self, base_url: str, cookies: list[dict[str, str]] | None = None) -> None:
+    async def load(
+        self,
+        base_url: str,
+        cookies: list[dict[str, str]] | None = None,
+        proxy: str = "",
+    ) -> None:
         """Laedt robots.txt von der angegebenen Domain.
 
         Args:
             base_url: Basis-URL der Website.
             cookies: Optionale Cookies.
+            proxy: Optionale Proxy-URL (Corporate-Proxy/Zscaler).
         """
         parsed = urlparse(base_url)
         robots_url = urlunparse((parsed.scheme, parsed.netloc, "/robots.txt", "", "", ""))
@@ -38,6 +44,7 @@ class RobotsChecker:
                 follow_redirects=True,
                 verify=False,
                 cookies=jar,
+                proxy=proxy.strip() or None,
             ) as client:
                 response = await client.get(robots_url)
                 if response.status_code == 200:

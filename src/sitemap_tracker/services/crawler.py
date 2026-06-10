@@ -12,7 +12,7 @@ from urllib.parse import quote, unquote, urldefrag, urljoin, urlparse, urlunpars
 
 import httpx
 from bs4 import BeautifulSoup
-from playwright.async_api import Browser, Page, Playwright, async_playwright
+from playwright.async_api import Browser, Page, Playwright, ProxySettings, async_playwright
 
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, CrawlStats, PageStatus, friendly_error_message
@@ -82,6 +82,7 @@ class Crawler:
         cookies: list[dict[str, str]] | None = None,
         user_agent: str = "",
         max_retries: int = 2,
+        proxy: str = "",
     ) -> None:
         self.start_url = self._normalize_url(start_url)
         self.max_depth = max_depth
@@ -92,6 +93,8 @@ class Crawler:
         self.respect_robots = respect_robots
         self.cookies = cookies or []
         self.max_retries = max_retries
+        # Optionaler Corporate-Proxy (Zscaler) fuer httpx UND Playwright.
+        self.proxy_url = proxy.strip()
         self.user_agent = user_agent or (
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
             "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -156,7 +159,7 @@ class Crawler:
         # robots.txt laden
         if self.respect_robots:
             log(t("crawler.loading_robots"))
-            await self._robots.load(self.start_url, cookies=self.cookies)
+            await self._robots.load(self.start_url, cookies=self.cookies, proxy=self.proxy_url)
             if self._robots.sitemaps:
                 log(t("crawler.robots_sitemaps", count=len(self._robots.sitemaps)))
             log(t("crawler.robots_loaded"))
@@ -474,6 +477,7 @@ class Crawler:
             verify=False,
             cookies=jar,
             headers={"User-Agent": self.user_agent},
+            proxy=self.proxy_url or None,
         ) as client:
             response = await client.get(url)
 
@@ -729,12 +733,17 @@ class Crawler:
             "--no-sandbox",
         ]
 
+        # Playwright-Chromium liest Proxy NICHT aus den Umgebungsvariablen -
+        # er muss explizit als launch-Argument uebergeben werden.
+        proxy: ProxySettings | None = {"server": self.proxy_url} if self.proxy_url else None
+
         # System-Chrome bevorzugen
         try:
             return await self._playwright.chromium.launch(
                 channel="chrome",
                 headless=self.headless,
                 args=launch_args,
+                proxy=proxy,
             )
         except Exception:
             pass
@@ -743,4 +752,5 @@ class Crawler:
         return await self._playwright.chromium.launch(
             headless=self.headless,
             args=launch_args,
+            proxy=proxy,
         )

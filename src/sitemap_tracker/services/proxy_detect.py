@@ -62,6 +62,7 @@ async def probe_proxy(
     cookies: list[dict[str, str]] | None = None,
     user_agent: str = "",
     timeout: int = 30,
+    proxy: str = "",
 ) -> ProxyDetection | None:
     """Prueft vorab, ob die Start-URL von einem Proxy/Gateway abgefangen wird.
 
@@ -101,6 +102,7 @@ async def probe_proxy(
             verify=False,
             cookies=jar,
             headers=headers,
+            proxy=proxy.strip() or None,
         ) as client:
             response = await client.get(start_url)
     except Exception:

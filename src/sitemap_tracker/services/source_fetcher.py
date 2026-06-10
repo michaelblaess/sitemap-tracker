@@ -41,6 +41,7 @@ async def fetch_and_locate(
     cookies: list[dict[str, str]] | None = None,
     user_agent: str = "",
     timeout: float = _DEFAULT_TIMEOUT,
+    proxy: str = "",
 ) -> SourceLocation:
     """Laedt ``source_url`` per httpx und sucht im HTML nach ``target_url``.
 
@@ -74,6 +75,7 @@ async def fetch_and_locate(
         verify=False,
         cookies=jar,
         headers=headers,
+        proxy=proxy.strip() or None,
     ) as client:
         response = await client.get(source_url)
         html = response.text

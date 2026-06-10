@@ -145,6 +145,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._log_height: int = LOG_HEIGHT_DEFAULT
         self._stats_timer = None
         self.show_preview: bool = self._settings.show_preview
+        # Optionaler Corporate-Proxy (Zscaler) fuer httpx + Playwright.
+        self.proxy_url: str = self._settings.proxy_url
         self._preview_service: PreviewService | None = None
         # Source-View-Registry: ID -> (source_url, target_url, link_text) —
         # siehe source_link_markup / action_show_source. Der Link-Text wird
@@ -403,6 +405,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             cookies=self.cookies,
             user_agent=self.user_agent,
             timeout=self.timeout,
+            proxy=self.proxy_url,
         )
         if proxy is not None:
             self._write_log(t("log.proxy_detected", host=proxy.host))
@@ -438,6 +441,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             cookies=self.cookies,
             user_agent=self.user_agent,
             max_retries=self.max_retries,
+            proxy=self.proxy_url,
         )
         self._crawler = crawler
 
@@ -766,6 +770,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "no_headless": self._settings.no_headless,
             "user_agent": self._settings.user_agent,
             "cookies": self._settings.cookies,
+            "proxy_url": self._settings.proxy_url,
         }
         self.push_screen(
             SitemapSettingsScreen(current, lang=current_language()),
@@ -803,6 +808,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self.user_agent = str(result.get("user_agent", self.user_agent))
         cookies_raw = str(result.get("cookies", ""))
         self.cookies = parse_cookies(cookies_raw)
+        self.proxy_url = str(result.get("proxy_url", self.proxy_url))
 
         self._settings.respect_robots = self.respect_robots
         self._settings.render = self.render_js
@@ -814,6 +820,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._settings.no_headless = not self.headless
         self._settings.user_agent = self.user_agent
         self._settings.cookies = cookies_raw
+        self._settings.proxy_url = self.proxy_url
         self._settings.language = str(result.get("language", self._settings.language))
         self._settings.save()
 
@@ -963,7 +970,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         panel = self.query_one("#preview-panel", PreviewPanel)
         panel.show_loading()
         if self._preview_service is None:
-            self._preview_service = PreviewService()
+            self._preview_service = PreviewService(proxy=self.proxy_url)
         # on_phase aktualisiert die Live-Phase im Panel. Der Worker laeuft im
         # Textual-Event-Loop, daher ist der direkte Widget-Zugriff sicher.
         data = await self._preview_service.capture(url, validator, on_phase=panel.set_phase)
@@ -1082,6 +1089,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
                 link_text=link_text,
                 cookies=self.cookies,
                 user_agent=self.user_agent,
+                proxy=self.proxy_url,
             )
         except Exception as exc:
             self.notify(t("notify.source_fetch_failed", error=str(exc)), severity="error")

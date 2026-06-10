@@ -68,6 +68,9 @@ class Settings:
         self.user_agent: str = ""
         # Roh-String "name=value, name2=value2" — Parsing via parse_cookies().
         self.cookies: str = ""
+        # Optionaler Corporate-Proxy (Zscaler) "http://host:port" fuer httpx
+        # UND den Playwright-Browser. Leer = kein expliziter Proxy.
+        self.proxy_url: str = ""
 
     def save(self) -> None:
         """Speichert die Einstellungen in eine JSON-Datei."""
@@ -85,6 +88,7 @@ class Settings:
             "no_headless": self.no_headless,
             "user_agent": self.user_agent,
             "cookies": self.cookies,
+            "proxy_url": self.proxy_url,
         }
         SETTINGS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
@@ -114,6 +118,7 @@ class Settings:
                 settings.no_headless = bool(data.get("no_headless", settings.no_headless))
                 settings.user_agent = str(data.get("user_agent", settings.user_agent))
                 settings.cookies = str(data.get("cookies", settings.cookies))
+                settings.proxy_url = str(data.get("proxy_url", settings.proxy_url))
             except Exception:
                 pass
 

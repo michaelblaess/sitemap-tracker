@@ -98,6 +98,16 @@ class SitemapSettingsScreen(BaseSettingsScreen):
                 )
             yield Static(t("settings.crawl_hint"), classes="settings-hint")
 
+        with TabPane(t("settings.tab_network"), id="settings-tab-network"), VerticalScroll():
+            with Horizontal(classes="settings-row"):
+                yield Label(t("settings.proxy_url_label"))
+                yield Input(
+                    value=str(self._settings.get("proxy_url", "")),
+                    placeholder="http://proxy.example.com:8080",
+                    id="set-proxy-url",
+                )
+            yield Static(t("settings.proxy_hint"), classes="settings-hint")
+
     def collect_app_settings(self, settings: dict[str, object]) -> None:
         """Schreibt die Crawl-Optionen aus den Widgets ins Ergebnis-Dict."""
         settings["respect_robots"] = self.query_one("#set-robots", Checkbox).value
@@ -110,6 +120,7 @@ class SitemapSettingsScreen(BaseSettingsScreen):
         settings["no_headless"] = self.query_one("#set-no-headless", Checkbox).value
         settings["user_agent"] = self.query_one("#set-user-agent", Input).value.strip()
         settings["cookies"] = self.query_one("#set-cookies", Input).value.strip()
+        settings["proxy_url"] = self.query_one("#set-proxy-url", Input).value.strip()
 
     def storage_paths(self) -> list[tuple[str, Path]]:
         """Liefert die Persistenz-Pfade fuer den Speicherort-Tab."""
