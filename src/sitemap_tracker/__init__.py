@@ -1,5 +1,5 @@
 """Sitemap Tracker - Crawlt Websites, erzeugt sitemap.xml, trackt Dead-Links."""
 
-__version__ = "2.6.0"
+__version__ = "2.7.0"
 __author__ = "Michael Blaess"
 __year__ = "2026"
