@@ -141,7 +141,10 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._crawl_ready: bool = False
         self._attention_on: bool = False
         # Startverzeichnis fuer den "Speichern unter"-Dialog der Sitemap.
-        self._last_export_dir: str = str(Path.home() / "Desktop")
+        # Desktop bevorzugen, aber auf Home zurueckfallen, wenn es fehlt (z.B.
+        # Linux/macOS ohne ~/Desktop) - sonst crasht der FileSave-Dialog.
+        _desktop = Path.home() / "Desktop"
+        self._last_export_dir: str = str(_desktop if _desktop.is_dir() else Path.home())
         self._log_height: int = LOG_HEIGHT_DEFAULT
         self._stats_timer = None
         self.show_preview: bool = self._settings.show_preview
@@ -733,17 +736,13 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
 
         # Aufgeloeste Redirect-Ziele (Alias-Faelle) einzeln ins Log
         for target in writer.resolved_targets:
-            self._write_log(
-                t("log.sitemap_redirect_target", url=self.link_markup(target, target))
-            )
+            self._write_log(t("log.sitemap_redirect_target", url=self.link_markup(target, target)))
 
         http_200 = [r for r in self._results if r.http_status_code == 200]
         total = len(http_200) + len(writer.resolved_targets)
         redirects = len(writer.resolved_targets)
         if redirects:
-            self.notify(
-                t("notify.sitemap_saved_redirects", path=written[0], count=total, redirects=redirects)
-            )
+            self.notify(t("notify.sitemap_saved_redirects", path=written[0], count=total, redirects=redirects))
         else:
             self.notify(t("notify.sitemap_saved", path=written[0], count=total))
 
