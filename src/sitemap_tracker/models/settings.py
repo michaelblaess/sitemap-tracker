@@ -71,6 +71,9 @@ class Settings:
         # Optionaler Corporate-Proxy (Zscaler) "http://host:port" fuer httpx
         # UND den Playwright-Browser. Leer = kein expliziter Proxy.
         self.proxy_url: str = ""
+        # JIRA-Export-Format: "markdown" fuer Jira Cloud (Paste-Konvertierung),
+        # "wiki" fuer Jira Server/Data Center (klassisches Wiki Markup).
+        self.jira_format: str = "markdown"
 
     def save(self) -> None:
         """Speichert die Einstellungen in eine JSON-Datei."""
@@ -89,6 +92,7 @@ class Settings:
             "user_agent": self.user_agent,
             "cookies": self.cookies,
             "proxy_url": self.proxy_url,
+            "jira_format": self.jira_format,
         }
         SETTINGS_FILE.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
@@ -119,6 +123,8 @@ class Settings:
                 settings.user_agent = str(data.get("user_agent", settings.user_agent))
                 settings.cookies = str(data.get("cookies", settings.cookies))
                 settings.proxy_url = str(data.get("proxy_url", settings.proxy_url))
+                jira_format = str(data.get("jira_format", settings.jira_format))
+                settings.jira_format = jira_format if jira_format == "wiki" else "markdown"
             except Exception:
                 pass
 

@@ -1135,7 +1135,9 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             self.notify(t("notify.no_results"), severity="warning")
             return
 
-        table_text = Reporter.generate_jira_table(self._results, self.start_url)
+        table_text = Reporter.generate_jira_table(
+            self._results, self.start_url, fmt=self._settings.jira_format
+        )
 
         if not table_text:
             self._write_log(t("log.no_errors_jira"))

@@ -11,7 +11,7 @@ from pathlib import Path
 
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Checkbox, Input, Label, Static, TabPane
+from textual.widgets import Checkbox, Input, Label, Select, Static, TabPane
 from textual_widgets import BaseSettingsScreen
 
 from ..i18n import t
@@ -108,6 +108,20 @@ class SitemapSettingsScreen(BaseSettingsScreen):
                 )
             yield Static(t("settings.proxy_hint"), classes="settings-hint")
 
+        with TabPane(t("settings.tab_export"), id="settings-tab-export"), VerticalScroll():
+            with Horizontal(classes="settings-row"):
+                yield Label(t("settings.jira_format_label"))
+                yield Select(
+                    [
+                        (t("settings.jira_format_markdown"), "markdown"),
+                        (t("settings.jira_format_wiki"), "wiki"),
+                    ],
+                    value="wiki" if self._settings.get("jira_format") == "wiki" else "markdown",
+                    allow_blank=False,
+                    id="set-jira-format",
+                )
+            yield Static(t("settings.jira_format_hint"), classes="settings-hint")
+
     def collect_app_settings(self, settings: dict[str, object]) -> None:
         """Schreibt die Crawl-Optionen aus den Widgets ins Ergebnis-Dict."""
         settings["respect_robots"] = self.query_one("#set-robots", Checkbox).value
@@ -121,6 +135,8 @@ class SitemapSettingsScreen(BaseSettingsScreen):
         settings["user_agent"] = self.query_one("#set-user-agent", Input).value.strip()
         settings["cookies"] = self.query_one("#set-cookies", Input).value.strip()
         settings["proxy_url"] = self.query_one("#set-proxy-url", Input).value.strip()
+        jira_format = self.query_one("#set-jira-format", Select).value
+        settings["jira_format"] = jira_format if jira_format == "wiki" else "markdown"
 
     def storage_paths(self) -> list[tuple[str, Path]]:
         """Liefert die Persistenz-Pfade fuer den Speicherort-Tab."""

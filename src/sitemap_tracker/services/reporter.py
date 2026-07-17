@@ -97,26 +97,37 @@ class Reporter:
         return output_path
 
     @staticmethod
-    def generate_jira_table(results: list[CrawlResult], start_url: str) -> str:
-        """Erzeugt eine JIRA-Wiki-Markup-Tabelle mit allen Fehler-URLs.
+    def generate_jira_table(results: list[CrawlResult], start_url: str, fmt: str = "markdown") -> str:
+        """Erzeugt eine JIRA-Tabelle mit allen Fehler-URLs.
 
-        Filtert nur URLs mit HTTP 4xx/5xx, ERROR oder TIMEOUT Status
-        und formatiert sie als JIRA-Wiki-Tabelle mit verweisenden Seiten.
+        Filtert nur URLs mit HTTP 4xx/5xx, ERROR oder TIMEOUT Status und
+        formatiert sie mit verweisenden Seiten. fmt="markdown" erzeugt eine
+        GitHub-Flavored-Markdown-Tabelle fuer Jira Cloud (wird beim Einfuegen
+        automatisch in eine ADF-Tabelle konvertiert - das alte Wiki Markup
+        versteht der Cloud-Editor nicht mehr). fmt="wiki" erzeugt das
+        klassische Wiki Markup fuer Jira Server/Data Center.
 
         Args:
             results: Alle Crawl-Ergebnisse.
             start_url: Start-URL des Crawls.
+            fmt: "markdown" (Default, Jira Cloud) oder "wiki" (Server/DC).
 
         Returns:
-            JIRA-Wiki-Markup-String fuer die Zwischenablage.
+            JIRA-Tabellen-String fuer die Zwischenablage (leer, wenn keine Fehler).
         """
         errors = [r for r in results if r.http_status_code >= 400 or r.status in (PageStatus.ERROR, PageStatus.TIMEOUT)]
 
         if not errors:
             return ""
 
-        lines = [t("jira.header")]
+        if fmt.lower() == "wiki":
+            return Reporter._jira_table_wiki(errors)
+        return Reporter._jira_table_markdown(errors)
 
+    @staticmethod
+    def _jira_table_wiki(errors: list[CrawlResult]) -> str:
+        """Baut die klassische Wiki-Markup-Tabelle (Jira Server/DC)."""
+        lines = [t("jira.header")]
         for r in errors:
             http_code = str(r.http_status_code) if r.http_status_code else "-"
             status = r.status.value
@@ -142,3 +153,40 @@ class Reporter:
             lines.append(f"|[{r.url}]|{http_code}|{status}|{referring}|")
 
         return "\n".join(lines)
+
+    @staticmethod
+    def _jira_table_markdown(errors: list[CrawlResult]) -> str:
+        """Baut die GFM-Markdown-Tabelle (Jira Cloud, Paste-Konvertierung)."""
+        # Spaltentitel aus dem uebersetzten Wiki-Header ableiten (mehrsprachig,
+        # ohne zweiten i18n-Key): "||A||B||" -> ["A", "B"].
+        titles = [c for c in t("jira.header").split("||") if c]
+        lines = [
+            f"| {' | '.join(titles)} |",
+            f"| {' | '.join('---' for _ in titles)} |",
+        ]
+        for r in errors:
+            http_code = str(r.http_status_code) if r.http_status_code else "-"
+            status = r.status.value
+
+            if r.referring_pages:
+                refs = []
+                for ref in r.referring_pages:
+                    link_text = ref.get("link_text", "").strip()
+                    ref_url = ref.get("url", "")
+                    if link_text:
+                        refs.append(f"[{Reporter._md_cell(link_text)}]({ref_url})")
+                    else:
+                        refs.append(Reporter._md_cell(ref_url))
+                referring = "<br>".join(refs)
+            else:
+                referring = "-"
+
+            cells = [Reporter._md_cell(r.url), http_code, status, referring]
+            lines.append(f"| {' | '.join(cells)} |")
+
+        return "\n".join(lines)
+
+    @staticmethod
+    def _md_cell(text: str) -> str:
+        """Escapt Pipe und Zeilenumbrueche fuer eine Markdown-Tabellenzelle."""
+        return text.replace("|", "\\|").replace("\r", "").replace("\n", "<br>")
