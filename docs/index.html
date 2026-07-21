@@ -157,14 +157,16 @@
     }
 
     /* ── Theme-aware hero logo (data-theme schaltet, default dark) ── */
-    /* Logo links neben der Textspalte; Titel und Beschreibung fluchten dadurch
-       am selben linken Rand. Unter 720px rutscht das Logo wieder nach oben. */
-    .hero-row {
+    /* Logo steht neben dem Titel; Beschreibung und Schaltflaechen beginnen
+       darunter wieder am linken Rand. Unter 720px rutscht das Logo ueber den
+       Titel. */
+    .hero-title-row {
       display: flex;
-      align-items: flex-start;
-      gap: 28px;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 8px;
     }
-    .hero-content { min-width: 0; }
+    .hero-title-row h1 { margin: 0; }
     .hero-logo {
       display: block;
       flex: 0 0 auto;
@@ -172,7 +174,7 @@
       filter: drop-shadow(0 10px 28px rgba(0,0,0,0.35));
     }
     @media (max-width: 720px) {
-      .hero-row { flex-direction: column; gap: 20px; }
+      .hero-title-row { flex-direction: column; align-items: flex-start; gap: 16px; }
     }
     .hero-logo-light { display: none; }
     [data-theme="light"] .hero-logo-dark { display: none; }
@@ -218,12 +220,12 @@
 
   <!-- ═══ HERO ═══ -->
   <section class="hero">
-    <div class="hero-row">
+    <div class="hero-badge"><span class="dot"></span> Open Source TUI Tool · v2.9.0</div>
+    <div class="hero-title-row">
       <img class="hero-logo hero-logo-dark" src="icon-globe-dark.svg" alt="" width="104" height="104">
       <img class="hero-logo hero-logo-light" src="icon-globe-light.svg" alt="" width="104" height="104">
-      <div class="hero-content">
-    <div class="hero-badge"><span class="dot"></span> Open Source TUI Tool · v2.9.0</div>
-    <h1>Sitemap<br><span class="accent">Tracker</span></h1>
+      <h1>Sitemap<br><span class="accent">Tracker</span></h1>
+    </div>
     <p class="hero-description">Crawlt Websites, generiert standardkonforme <code style="font-family:var(--font-mono);font-size:0.9em;color:var(--accent);background:var(--accent-muted);padding:2px 6px;border-radius:4px;">sitemap.xml</code> Dateien — und trackt tote Links, Last-Modified-Dates und SEO-Probleme direkt im Terminal.</p>
     <div class="hero-actions">
       <a href="https://github.com/michaelblaess/sitemap-tracker" class="btn btn-primary">
@@ -231,8 +233,6 @@
         GitHub Repository
       </a>
       <a href="#install" class="btn btn-secondary">Installation</a>
-    </div>
-      </div>
     </div>
   </section>
 
