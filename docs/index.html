@@ -172,7 +172,9 @@
     .liability li { margin-bottom: 8px; }
     .liability .fineprint { color: var(--text-tertiary); font-size: 14px; margin-top: 20px; }
     .load-warning {
-      max-width: calc(var(--max-width) - 64px); margin: 0 auto; padding: 20px 24px;
+      /* Abstand nach unten, weil die Galerie direkt folgt und selbst keinen
+         oberen Innenabstand hat - sonst klebt der Kasten an den Reitern. */
+      max-width: calc(var(--max-width) - 64px); margin: 0 auto 40px; padding: 20px 24px;
       border: 1px solid var(--accent); border-radius: var(--radius-lg);
       background: var(--bg-secondary); color: var(--text-secondary);
     }
