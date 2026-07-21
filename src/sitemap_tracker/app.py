@@ -18,8 +18,11 @@ from textual.widget import Widget
 from textual.widgets import Footer, Header
 from textual_themes import register_all
 from textual_widgets import (
+    DISCLAIMER_VERSION,
     ClickableLinksMixin,
     CrashGuard,
+    DisclaimerScreen,
+    DisclaimerStore,
     HorizontalSplitter,
     LogPanel,
     LogRouter,
@@ -27,11 +30,11 @@ from textual_widgets import (
     VerticalSplitter,
 )
 
-from . import __version__
+from . import __author__, __version__, __year__
 from .i18n import current_language, t
 from .models.crawl_result import CrawlResult, PageStatus
 from .models.history import History, HistoryEntry
-from .models.settings import Settings, parse_cookies
+from .models.settings import SETTINGS_FILE, Settings, parse_cookies
 from .models.sitemap_reader import discover_sitemap, load_sitemap_from_file, load_sitemap_urls
 from .models.sitemap_writer import SitemapWriter
 from .services.crawler import Crawler
@@ -84,6 +87,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         output_path: str = "",
         max_depth: int | None = None,
         concurrency: int | None = None,
+        rate_per_minute: int | None = None,
         timeout: int | None = None,
         render: bool = False,
         headless: bool = True,
@@ -103,6 +107,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
 
         # Persistierte Einstellungen laden
         self._settings = Settings.load()
+        # Zustimmung zum Haftungshinweis liegt neben den Einstellungen.
+        self._disclaimer = DisclaimerStore(SETTINGS_FILE.parent / "disclaimer.json")
 
         self.start_url = start_url
         self.sitemap_file = sitemap_file
@@ -113,6 +119,13 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self.timeout = timeout if timeout is not None else self._settings.timeout
         # Wiederholungen bei Verbindungsproblemen (nur aus den Settings).
         self.max_retries = self._settings.max_retries
+        # Drosselung: CLI gewinnt, sonst die Einstellung; abgeschaltet entspricht
+        # 0 Requests/Minute, also kein Limit.
+        self.rate_per_minute = (
+            rate_per_minute
+            if rate_per_minute is not None
+            else (self._settings.rate_per_minute if self._settings.rate_limit_enabled else 0)
+        )
         # CLI --no-headless erzwingt headless=False; sonst aus den Settings.
         self.headless = headless if not headless else (not self._settings.no_headless)
         # CLI --user-agent gewinnt, sonst Settings (leer = Crawler-Default).
@@ -238,6 +251,27 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
 
         yield Footer()
 
+    def _ask_disclaimer(self) -> None:
+        """Holt den Haftungshinweis ein, solange er nicht (in dieser Fassung) bestaetigt ist."""
+        if self._disclaimer.accepted_version == DISCLAIMER_VERSION:
+            return
+        self.push_screen(
+            DisclaimerScreen(
+                app_name=f"sitemap-tracker {__version__}",
+                lang=current_language(),
+                author=__author__,
+                footer=f"© {__year__} {__author__} · github.com/michaelblaess/sitemap-tracker",
+            ),
+            callback=self._on_disclaimer,
+        )
+
+    def _on_disclaimer(self, accepted: bool | None) -> None:
+        """Ohne Zustimmung wird das Programm beendet - der Hinweis ist nicht optional."""
+        if not accepted:
+            self.exit()
+            return
+        self._disclaimer.record()
+
     def on_mount(self) -> None:
         """Initialisierung nach dem Starten."""
         # Vorschau-Panel nur einblenden, wenn die Vorschau aktiviert ist.
@@ -257,6 +291,12 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
                 robots=robots_info,
             )
         )
+        # Last-Hinweis frueh ins Protokoll: ohne Limit haengt die Rate allein
+        # davon ab, wie schnell das Ziel antwortet.
+        if self.rate_per_minute > 0:
+            self._write_log(t("log.rate_on", count=self.rate_per_minute))
+        else:
+            self._write_log(t("log.rate_off", count=self.concurrency))
 
         if self.sitemap_file:
             import os
@@ -265,6 +305,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             self.sub_title = filename
         elif self.start_url:
             self.sub_title = self.start_url
+
+        self._ask_disclaimer()
 
         # Focus auf Tabelle
         try:
@@ -445,6 +487,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             user_agent=self.user_agent,
             max_retries=self.max_retries,
             proxy=self.proxy_url,
+            rate_per_minute=self.rate_per_minute,
         )
         self._crawler = crawler
 
@@ -1135,9 +1178,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             self.notify(t("notify.no_results"), severity="warning")
             return
 
-        table_text = Reporter.generate_jira_table(
-            self._results, self.start_url, fmt=self._settings.jira_format
-        )
+        table_text = Reporter.generate_jira_table(self._results, self.start_url, fmt=self._settings.jira_format)
 
         if not table_text:
             self._write_log(t("log.no_errors_jira"))

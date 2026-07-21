@@ -220,6 +220,13 @@ def main() -> None:
         help=t("cli.no_headless_help"),
     )
     parser.add_argument(
+        "--rate-limit",
+        type=int,
+        default=None,
+        metavar="N",
+        help=t("cli.rate_limit_help"),
+    )
+    parser.add_argument(
         "--ignore-robots",
         action="store_true",
         default=False,
@@ -286,6 +293,7 @@ def main() -> None:
             output_path=args.output,
             max_depth=args.max_depth,
             concurrency=args.concurrency,
+            rate_per_minute=args.rate_limit,
             timeout=args.timeout,
             render=args.render,
             headless=not args.no_headless,

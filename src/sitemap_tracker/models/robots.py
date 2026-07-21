@@ -2,19 +2,43 @@
 
 from __future__ import annotations
 
+import re
 from urllib.parse import urlparse, urlunparse
 
 import httpx
 
 
+def _compile_pattern(pattern: str) -> re.Pattern[str]:
+    """Uebersetzt ein robots-Pfadmuster in eine Regex.
+
+    Der Standard (RFC 9309) kennt zwei Sonderzeichen: `*` fuer eine beliebige
+    Zeichenfolge und `$` am Ende fuer "Pfad endet hier". Ohne diese Behandlung
+    greifen reale Regeln nie - z.B. `Disallow: /*CR-Dokumentation.pdf$` von
+    spiegel.de, weil kein Pfad buchstaeblich mit `/*CR-` beginnt.
+
+    Args:
+        pattern:
+        Pfadmuster aus einer Disallow-/Allow-Zeile.
+
+    Returns:
+        Kompilierte Regex, die am Pfadanfang ankert.
+    """
+    anchored_end = pattern.endswith("$")
+    raw = pattern[:-1] if anchored_end else pattern
+    body = "".join(".*" if char == "*" else re.escape(char) for char in raw)
+    return re.compile(f"^{body}$" if anchored_end else f"^{body}")
+
+
 class RobotsChecker:
     """Laedt und parst robots.txt fuer eine Domain.
 
-    Unterstuetzt Disallow/Allow-Regeln und Sitemap-Eintraege.
+    Unterstuetzt Disallow/Allow-Regeln (inkl. `*`/`$`) und Sitemap-Eintraege.
     """
 
     def __init__(self) -> None:
-        self._rules: list[tuple[str, bool]] = []  # (path, is_allowed)
+        # (Musterlaenge, kompiliertes Muster, erlaubt) - die Laenge entscheidet,
+        # welche Regel bei mehreren Treffern gewinnt (spezifischste zuerst).
+        self._rules: list[tuple[int, re.Pattern[str], bool]] = []
         self._sitemaps: list[str] = []
         self._loaded = False
 
@@ -99,12 +123,12 @@ class RobotsChecker:
             # Disallow/Allow Regeln
             if lower.startswith("disallow:"):
                 path = line[len("disallow:") :].strip()
-                if path:
-                    self._rules.append((path, False))
+                if path:  # "Disallow:" ohne Pfad heisst: alles erlaubt
+                    self._rules.append((len(path), _compile_pattern(path), False))
             elif lower.startswith("allow:"):
                 path = line[len("allow:") :].strip()
                 if path:
-                    self._rules.append((path, True))
+                    self._rules.append((len(path), _compile_pattern(path), True))
             elif lower.startswith("sitemap:"):
                 url = line[len("sitemap:") :].strip()
                 if url:
@@ -112,6 +136,9 @@ class RobotsChecker:
 
     def is_allowed(self, url: str) -> bool:
         """Prueft ob eine URL gecrawlt werden darf.
+
+        Bei mehreren passenden Regeln gewinnt die laengste (spezifischste); bei
+        gleicher Laenge gewinnt Allow - so schreibt es RFC 9309 vor.
 
         Args:
             url: Die zu pruefende URL.
@@ -122,17 +149,19 @@ class RobotsChecker:
         if not self._rules:
             return True
 
-        path = urlparse(url).path
+        parsed = urlparse(url)
+        path = parsed.path or "/"
+        if parsed.query:
+            path = f"{path}?{parsed.query}"
 
-        # Laengste passende Regel gewinnt (spezifischste)
-        best_match = ""
+        best_length = -1
         allowed = True
-
-        for rule_path, is_allowed in self._rules:
-            if path.startswith(rule_path) and len(rule_path) > len(best_match):
-                best_match = rule_path
-                allowed = is_allowed
-
+        for length, pattern, rule_allows in self._rules:
+            if not pattern.search(path):
+                continue
+            if length > best_length or (length == best_length and rule_allows):
+                best_length = length
+                allowed = rule_allows
         return allowed
 
     @property

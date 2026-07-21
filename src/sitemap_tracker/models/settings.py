@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import contextlib
 import json
+import locale
+import os
 from pathlib import Path
 
 # Einstellungsdatei im User-Verzeichnis.
@@ -11,6 +13,31 @@ from pathlib import Path
 # die einmalige Kopier-Migration laeuft beim App-Start in ``__main__.py``.
 SETTINGS_DIR = Path.home() / ".sitemap-tracker"
 SETTINGS_FILE = SETTINGS_DIR / "settings.json"
+
+
+def detect_language() -> str:
+    """Leitet die Startsprache aus der Systemumgebung ab.
+
+    Nur beim allerersten Start relevant - danach steht die Sprache in den
+    Einstellungen. Ohne diese Ableitung bekaeme jeder Nutzer weltweit eine
+    deutsche Oberflaeche und einen deutschen Haftungshinweis, obwohl das
+    Projekt englischsprachig dokumentiert ist.
+
+    Deutsch wird nur bei einer nachweislich deutschsprachigen Umgebung gewaehlt.
+    Jeder andere Fall - unbekannte Sprache, leere Umgebung oder ein Fehler beim
+    Auslesen (locale.getlocale() wirft auf manchen Systemen) - fuehrt zu
+    Englisch: die Sprache, in der das Projekt dokumentiert ist.
+
+    Returns:
+        "de" fuer eine deutschsprachige Umgebung, sonst immer "en".
+    """
+    code = ""
+    with contextlib.suppress(Exception):
+        code = locale.getlocale()[0] or ""
+    if not code:
+        with contextlib.suppress(Exception):
+            code = os.environ.get("LC_ALL") or os.environ.get("LANG") or ""
+    return "de" if code.lower().startswith("de") else "en"
 
 
 # textual-themes 0.5 hat 25 Themes umbenannt (trademark-safety pass).
@@ -55,8 +82,13 @@ class Settings:
         self.theme: str = "textual-dark"
         self.respect_robots: bool = True
         self.render: bool = False
-        self.language: str = "de"
+        # Erststart: Sprache aus der Systemumgebung, danach aus der Datei.
+        self.language: str = detect_language()
         self.concurrency: int = 8
+        # Requests pro Minute; 0 = ungebremst. Voreingestellt gedrosselt, weil
+        # ein Crawl sonst mehrere hundert Requests pro Minute erzeugen kann.
+        self.rate_limit_enabled: bool = True
+        self.rate_per_minute: int = 60
         self.timeout: int = 30
         self.max_depth: int = 10
         # Wiederholungen bei Verbindungsproblemen (zusaetzlich zum 1. Versuch).
@@ -84,6 +116,8 @@ class Settings:
             "render": self.render,
             "language": self.language,
             "concurrency": self.concurrency,
+            "rate_limit_enabled": self.rate_limit_enabled,
+            "rate_per_minute": self.rate_per_minute,
             "timeout": self.timeout,
             "max_depth": self.max_depth,
             "max_retries": self.max_retries,
@@ -115,6 +149,8 @@ class Settings:
                 settings.render = data.get("render", settings.render)
                 settings.language = data.get("language", settings.language)
                 settings.concurrency = int(data.get("concurrency", settings.concurrency))
+                settings.rate_limit_enabled = bool(data.get("rate_limit_enabled", settings.rate_limit_enabled))
+                settings.rate_per_minute = int(data.get("rate_per_minute", settings.rate_per_minute))
                 settings.timeout = int(data.get("timeout", settings.timeout))
                 settings.max_depth = int(data.get("max_depth", settings.max_depth))
                 settings.max_retries = int(data.get("max_retries", settings.max_retries))

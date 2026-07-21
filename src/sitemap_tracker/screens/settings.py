@@ -9,9 +9,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from textual import on
 from textual.app import ComposeResult
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Checkbox, Input, Label, Select, Static, TabPane
+from textual_slider import Slider
 from textual_widgets import BaseSettingsScreen
 
 from ..i18n import t
@@ -22,6 +24,19 @@ from ..services.preview_service import CACHE_DIR as PREVIEW_CACHE_DIR
 
 class SitemapSettingsScreen(BaseSettingsScreen):
     """App-Settings: Sprache (von der Basis) + Crawl-Optionen."""
+
+    DEFAULT_CSS = """
+    SitemapSettingsScreen .rate-value {
+        padding: 0 1;
+    }
+    SitemapSettingsScreen .rate-value.off {
+        color: $text-disabled;
+    }
+    SitemapSettingsScreen #set-rate {
+        width: 1fr;
+        margin: 0 1;
+    }
+    """
 
     def app_tabs(self) -> ComposeResult:
         """Ergaenzt den Crawl-Tab mit robots.txt, Playwright und Crawl-Parametern."""
@@ -54,6 +69,22 @@ class SitemapSettingsScreen(BaseSettingsScreen):
                     type="integer",
                     id="set-concurrency",
                 )
+            rate_on = bool(self._settings.get("rate_limit_enabled", True))
+            rate_value = self._clamp(self._settings.get("rate_per_minute", 60), 60, 10, 240)
+            with Horizontal(classes="settings-row"):
+                yield Label(t("settings.rate_label"))
+                yield Checkbox(
+                    t("settings.rate_checkbox"),
+                    value=rate_on,
+                    id="set-rate-on",
+                )
+            yield Static(
+                self._rate_label(rate_value),
+                id="rate-value",
+                classes="rate-value" if rate_on else "rate-value off",
+            )
+            yield Slider(min=10, max=240, step=10, value=rate_value, id="set-rate", disabled=not rate_on)
+            yield Static(t("settings.rate_hint"), classes="settings-hint")
             with Horizontal(classes="settings-row"):
                 yield Label(t("settings.timeout_label"))
                 yield Input(
@@ -128,6 +159,8 @@ class SitemapSettingsScreen(BaseSettingsScreen):
         settings["render"] = self.query_one("#set-playwright", Checkbox).value
         settings["show_preview"] = self.query_one("#set-preview", Checkbox).value
         settings["concurrency"] = self._int("#set-concurrency", 8)
+        settings["rate_limit_enabled"] = self.query_one("#set-rate-on", Checkbox).value
+        settings["rate_per_minute"] = int(self.query_one("#set-rate", Slider).value)
         settings["timeout"] = self._int("#set-timeout", 30)
         settings["max_depth"] = self._int("#set-max-depth", 10)
         settings["max_retries"] = self._int("#set-max-retries", 2, minimum=0)
@@ -145,6 +178,39 @@ class SitemapSettingsScreen(BaseSettingsScreen):
             (t("settings.storage.history"), History.HISTORY_FILE),
             (t("settings.storage.preview_cache"), PREVIEW_CACHE_DIR),
         ]
+
+    @staticmethod
+    def _clamp(value: object, default: int, lo: int, hi: int) -> int:
+        """Begrenzt einen gespeicherten Wert auf den Bereich des Reglers."""
+        try:
+            return max(lo, min(hi, int(str(value))))
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _rate_label(per_minute: int) -> str:
+        """Uebersetzt die Reglerstellung in Klartext (Zahl + Einordnung)."""
+        if per_minute <= 30:
+            step = t("settings.rate_step_gentle")
+        elif per_minute <= 90:
+            step = t("settings.rate_step_careful")
+        elif per_minute <= 150:
+            step = t("settings.rate_step_brisk")
+        else:
+            step = t("settings.rate_step_reckless")
+        return t("settings.rate_value", count=per_minute, step=step)
+
+    @on(Slider.Changed, "#set-rate")
+    def _on_rate_changed(self, event: Slider.Changed) -> None:
+        """Haelt die Beschriftung ueber dem Regler am aktuellen Wert."""
+        self.query_one("#rate-value", Static).update(self._rate_label(int(event.slider.value)))
+
+    @on(Checkbox.Changed, "#set-rate-on")
+    def _on_rate_toggled(self, event: Checkbox.Changed) -> None:
+        """Sperrt den Regler, solange nicht gedrosselt wird."""
+        enabled = bool(event.value)
+        self.query_one("#set-rate", Slider).disabled = not enabled
+        self.query_one("#rate-value", Static).set_class(not enabled, "off")
 
     def _int(self, selector: str, default: int, minimum: int = 1) -> int:
         """Liest einen Integer-Wert aus einem Input-Feld (mit Fallback).

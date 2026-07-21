@@ -18,6 +18,7 @@ from ..i18n import t
 from ..models.crawl_result import CrawlResult, CrawlStats, PageStatus, friendly_error_message
 from ..models.robots import RobotsChecker
 from .page_analysis import detect_tech, extract_http_details, extract_seo
+from .rate_limit import RateLimiter
 
 # URL-Endungen die uebersprungen werden (keine HTML-Seiten)
 SKIP_EXTENSIONS = {
@@ -83,6 +84,7 @@ class Crawler:
         user_agent: str = "",
         max_retries: int = 2,
         proxy: str = "",
+        rate_per_minute: int = 60,
     ) -> None:
         self.start_url = self._normalize_url(start_url)
         self.max_depth = max_depth
@@ -110,6 +112,9 @@ class Crawler:
         self._robots = RobotsChecker()
         self._stats = CrawlStats()
         self._cancelled = False
+        # 0 = kein Limit. Gedrosselt wird jeder Abruf, auch Wiederholungsversuche.
+        self.rate_per_minute = rate_per_minute
+        self._limiter = RateLimiter(rate_per_minute)
 
         # Playwright
         self._playwright: Playwright | None = None
@@ -377,6 +382,7 @@ class Crawler:
 
             for attempt in range(self.max_retries + 1):
                 try:
+                    await self._limiter.acquire()
                     if self.render:
                         links_with_text = await self._fetch_with_playwright(url, result)
                     else:
