@@ -83,6 +83,7 @@ sitemap-tracker https://example.com --cookie session=abc123
 | `--output`, `-o` | Ausgabe-Pfad für sitemap.xml | `sitemap_<host>_<timestamp>.xml` |
 | `--max-depth`, `-d` | Maximale Crawl-Tiefe | 10 |
 | `--concurrency`, `-c` | Parallele Requests | 8 |
+| `--rate-limit` | Max. Requests pro Minute (0 = ohne Limit) | 60 |
 | `--timeout`, `-t` | Timeout pro Seite (Sekunden) | 30 |
 | `--render` | JavaScript mit Playwright rendern | aus |
 | `--no-headless` | Browser sichtbar (Debugging) | aus |
@@ -165,8 +166,53 @@ URLs im Log, im Header und im Detail-Panel sind ohne festgehaltenes Strg klickba
 
 - Informiere den Website-Betreiber **vor** dem Crawlen, insbesondere bei großen Websites
 - Respektiere die `robots.txt` (ist standardmäßig aktiviert)
-- Setze angemessene Concurrency- und Timeout-Werte
+- Lass das Rate-Limit aktiviert (siehe unten)
 - Dieses Tool ist für **eigene Websites** und **autorisierte Analysen** gedacht
+
+### Last auf dem Zielsystem
+
+Ein Crawl folgt Links bis zur eingestellten Tiefe - die Zahl der Seiten steht also **vorher nicht
+fest**, anders als beim Scan einer festen Sitemap. Mit `--render` läuft jede Seite zusätzlich
+durch ein echtes Chromium und damit an den Zwischenspeichern des Servers vorbei, was ein
+Vielfaches der Last eines normalen Besuchers erzeugt. Auf einer großen Website kommen so schnell
+mehrere hundert Requests pro Minute zusammen - genug, um ein Produktivsystem spürbar zu
+verlangsamen.
+
+Der Crawler ist deshalb **von Haus aus gedrosselt**: 60 Requests pro Minute. Ändern kannst Du das
+unter *Einstellungen -> Crawl* oder auf der Kommandozeile:
+
+```bash
+sitemap-tracker https://www.example.com --rate-limit 20   # schonender
+sitemap-tracker https://www.example.com --rate-limit 0    # ohne Limit - Vorsicht
+```
+
+`--concurrency` ist **kein** Rate-Limit: Die Einstellung begrenzt, wie viele Abrufe gleichzeitig
+laufen, nicht wie viele pro Minute rausgehen. Und mit `--render` werden nur die Seitenaufrufe
+gedrosselt - was der Browser danach selbst nachlädt (Skripte, Schriften, Bilder), zählt nicht
+mit. Die tatsächliche Last liegt also höher als die eingestellte Zahl.
+
+## Nutzung auf eigene Verantwortung
+
+Dieses Programm ruft Webseiten automatisiert ab und erzeugt dabei Last auf den Zielsystemen. Je
+nach Einstellung kann diese Last die eines normalen Besuchers um ein Vielfaches übersteigen und
+die Erreichbarkeit des Zielsystems beeinträchtigen.
+
+Mit der Nutzung erklären Sie:
+
+1. Sie setzen das Programm ausschließlich gegen Systeme ein, für die Ihnen eine ausdrückliche
+   Berechtigung des Betreibers vorliegt.
+2. Sie tragen die alleinige Verantwortung für den Einsatz, die gewählten Einstellungen und alle
+   daraus entstehenden Folgen.
+3. Vor einem Lauf gegen ein Produktivsystem prüfen Sie, ob die eingestellten Grenzwerte für
+   dieses System angemessen sind.
+
+Die Software wird unentgeltlich und ohne jede Gewährleistung bereitgestellt ("as is"), wie in
+Abschnitt 7 der Apache-Lizenz 2.0 beschrieben. Eine Haftung des Autors (Michael Blaess) für
+Schäden, die aus der Nutzung entstehen, ist ausgeschlossen, soweit dies gesetzlich zulässig ist.
+Unberührt bleibt die Haftung für Vorsatz und grobe Fahrlässigkeit, für Schäden aus der Verletzung
+des Lebens, des Körpers oder der Gesundheit sowie nach dem Produkthaftungsgesetz.
+
+Beim ersten Start fragt das Programm diesen Hinweis ab.
 
 ## Entwickler
 

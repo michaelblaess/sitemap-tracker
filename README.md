@@ -83,6 +83,7 @@ sitemap-tracker https://example.com --cookie session=abc123
 | `--output`, `-o` | Output path for sitemap.xml | `sitemap_<host>_<timestamp>.xml` |
 | `--max-depth`, `-d` | Maximum crawl depth | 10 |
 | `--concurrency`, `-c` | Parallel requests | 8 |
+| `--rate-limit` | Max requests per minute (0 = no limit) | 60 |
 | `--timeout`, `-t` | Timeout per page (seconds) | 30 |
 | `--render` | Render JavaScript with Playwright | off |
 | `--no-headless` | Browser visible (debugging) | off |
@@ -165,8 +166,52 @@ URLs in the log, header and detail panel are clickable without holding Ctrl.
 
 - Inform the website operator **before** crawling, especially for large websites
 - Respect `robots.txt` (enabled by default)
-- Use reasonable concurrency and timeout values
+- Keep the rate limit on (see below)
 - This tool is intended for **your own websites** and **authorized analyses**
+
+### Load on the target system
+
+A crawl follows links down to the configured depth, so the number of pages is **not known
+upfront** - unlike a scan of a fixed sitemap. With `--render` every page additionally goes
+through a real Chromium, which bypasses the server's caches and creates several times the load
+of an ordinary visitor. On a large site this quickly adds up to hundreds of requests per minute
+and can noticeably degrade a production system.
+
+The crawler is therefore **rate-limited out of the box**: 60 requests per minute. Change it
+under *Settings -> Crawl* or on the command line:
+
+```bash
+sitemap-tracker https://www.example.com --rate-limit 20   # gentler
+sitemap-tracker https://www.example.com --rate-limit 0    # no limit - be careful
+```
+
+Note that `--concurrency` is **not** a rate limit: it caps how many requests run at the same
+time, not how many go out per minute. And with `--render`, only the page requests are throttled
+- whatever the browser pulls in afterwards (scripts, fonts, images) is not counted, so the real
+load is higher than the configured number.
+
+## Use at your own risk
+
+This program retrieves web pages automatically and thereby places load on the target systems.
+Depending on its settings, that load can exceed the load of an ordinary visitor many times over
+and can impair the availability of the target system.
+
+By using it, you declare that:
+
+1. You will use this program only against systems for which you hold explicit authorisation from
+   their operator.
+2. You bear sole responsibility for its use, for the settings you choose and for all
+   consequences arising from them.
+3. Before running it against a production system, you will verify that the configured limits are
+   appropriate for that system.
+
+The software is provided free of charge and without warranty of any kind ("as is"), as set out in
+section 7 of the Apache License 2.0. The liability of the author (Michael Blaess) for damages
+arising from its use is excluded to the extent permitted by applicable law. Liability for intent
+and gross negligence, for injury to life, body or health, and under mandatory product liability
+law remains unaffected.
+
+On first start the program asks you to confirm this notice.
 
 ## Development
 

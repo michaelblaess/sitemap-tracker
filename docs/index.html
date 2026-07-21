@@ -165,6 +165,19 @@
     .hero-logo-light { display: none; }
     [data-theme="light"] .hero-logo-dark { display: none; }
     [data-theme="light"] .hero-logo-light { display: block; }
+
+    /* ── Page-specific: Verantwortung ── */
+    .liability { max-width: var(--max-width); margin: 0 auto; color: var(--text-secondary); }
+    .liability ol { margin: 16px 0 16px 24px; }
+    .liability li { margin-bottom: 8px; }
+    .liability .fineprint { color: var(--text-tertiary); font-size: 14px; margin-top: 20px; }
+    .load-warning {
+      max-width: calc(var(--max-width) - 64px); margin: 0 auto; padding: 20px 24px;
+      border: 1px solid var(--accent); border-radius: var(--radius-lg);
+      background: var(--bg-secondary); color: var(--text-secondary);
+    }
+    .load-warning strong { color: var(--text-primary); }
+    @media (max-width: 640px) { .load-warning { max-width: calc(100% - 32px); } }
   </style>
 </head>
 <body>
@@ -179,6 +192,7 @@
     <div class="header-right">
       <a href="#features" class="header-link">Features</a>
       <a href="#cli" class="header-link">CLI</a>
+      <a href="#verantwortung" class="header-link">Verantwortung</a>
       <a href="#install" class="header-link">Installation</a>
       <a href="https://github.com/michaelblaess/sitemap-tracker" class="header-link">GitHub</a>
       <button class="theme-toggle" onclick="toggleTheme()" aria-label="Theme wechseln">
@@ -192,7 +206,7 @@
   <section class="hero">
     <img class="hero-logo hero-logo-dark" src="icon-globe-dark.svg" alt="" width="104" height="104">
     <img class="hero-logo hero-logo-light" src="icon-globe-light.svg" alt="" width="104" height="104">
-    <div class="hero-badge"><span class="dot"></span> Open Source TUI Tool · v2.6.0</div>
+    <div class="hero-badge"><span class="dot"></span> Open Source TUI Tool · v2.9.0</div>
     <h1>Sitemap<br><span class="accent">Tracker</span></h1>
     <p class="hero-description">Crawlt Websites, generiert standardkonforme <code style="font-family:var(--font-mono);font-size:0.9em;color:var(--accent);background:var(--accent-muted);padding:2px 6px;border-radius:4px;">sitemap.xml</code> Dateien — und trackt tote Links, Last-Modified-Dates und SEO-Probleme direkt im Terminal.</p>
     <div class="hero-actions">
@@ -203,6 +217,14 @@
       <a href="#install" class="btn btn-secondary">Installation</a>
     </div>
   </section>
+
+  <div class="load-warning">
+    <strong>Ein Crawl erzeugt Last.</strong> Der Crawler folgt Links bis zur eingestellten Tiefe, mit
+    <code>--render</code> zusätzlich an den Zwischenspeichern des Servers vorbei. Er ist deshalb
+    <strong>von Haus aus auf 60 Requests pro Minute gedrosselt</strong>. Setze ihn nur gegen Systeme
+    ein, für die Du eine Berechtigung hast &mdash; <a href="#verantwortung" style="color:var(--accent)">Einzelheiten
+    unter Verantwortung</a>.
+  </div>
 
   <!-- ═══ SCREENSHOT GALLERY ═══ -->
   <section class="gallery">
@@ -417,6 +439,11 @@
             <td class="default">8</td>
           </tr>
           <tr>
+            <td><code>--rate-limit</code></td>
+            <td>Max. Requests pro Minute (0 = ohne Limit)</td>
+            <td class="default">60</td>
+          </tr>
+          <tr>
             <td><code>--timeout</code> <code>-t</code></td>
             <td>Timeout pro Seite (Sekunden)</td>
             <td class="default">30</td>
@@ -438,6 +465,53 @@
           </tr>
         </tbody>
       </table>
+    </div>
+  </section>
+
+  <div class="divider"><div class="divider-line"></div></div>
+
+  <!-- ═══ VERANTWORTUNG ═══ -->
+  <section class="section" id="verantwortung">
+    <div class="section-label">Verantwortung</div>
+    <h2 class="section-title">Nutzung auf eigene Verantwortung</h2>
+    <p class="section-description">Was ein Crawl auf dem Zielsystem anrichtet - und wer dafür geradesteht.</p>
+    <div class="liability">
+      <p>
+        Ein Crawl folgt Links bis zur eingestellten Tiefe - die Zahl der Seiten steht also
+        <strong>vorher nicht fest</strong>, anders als beim Scan einer festen Sitemap. Mit
+        <code>--render</code> läuft jede Seite zusätzlich durch ein echtes Chromium und damit an
+        den Zwischenspeichern des Servers vorbei, was ein Vielfaches der Last eines normalen
+        Besuchers erzeugt. Auf einer großen Website kommen so schnell mehrere hundert Requests
+        pro Minute zusammen - genug, um ein Produktivsystem spürbar zu verlangsamen.
+      </p>
+      <p style="margin-top:16px">
+        Deshalb ist der Crawler <strong>voreingestellt gedrosselt</strong>: 60 Requests pro
+        Minute. Zwei Punkte dazu: <code>--concurrency</code> ist kein Rate-Limit, sondern
+        begrenzt nur die Gleichzeitigkeit. Und mit <code>--render</code> werden ausschließlich
+        die Seitenaufrufe gedrosselt - was der Browser danach an Skripten, Schriften und Bildern
+        nachlädt, zählt nicht mit, die tatsächliche Last liegt also höher als die eingestellte
+        Zahl.
+      </p>
+      <p style="margin-top:16px">Mit der Nutzung erklären Sie:</p>
+      <ol>
+        <li>Sie setzen das Programm ausschließlich gegen Systeme ein, für die Ihnen eine ausdrückliche
+        Berechtigung des Betreibers vorliegt.</li>
+        <li>Sie tragen die alleinige Verantwortung für den Einsatz, die gewählten Einstellungen und alle
+        daraus entstehenden Folgen.</li>
+        <li>Vor einem Lauf gegen ein Produktivsystem prüfen Sie, ob die eingestellten Grenzwerte für
+        dieses System angemessen sind.</li>
+      </ol>
+      <p class="fineprint">
+        Die Software wird unentgeltlich und ohne jede Gewährleistung bereitgestellt ("as is"), wie in
+        Abschnitt 7 der Apache-Lizenz 2.0 beschrieben. Eine Haftung des Autors (Michael Blaess) für
+        Schäden, die aus der Nutzung entstehen, ist ausgeschlossen, soweit dies gesetzlich zulässig
+        ist. Unberührt bleibt die Haftung für Vorsatz und grobe Fahrlässigkeit, für Schäden aus der
+        Verletzung des Lebens, des Körpers oder der Gesundheit sowie nach dem Produkthaftungsgesetz.
+      </p>
+      <p class="fineprint">
+        Beim ersten Start fragt das Programm diesen Hinweis ab; ohne Zustimmung startet es nicht.
+        Die Sprache richtet sich dabei nach der Systemumgebung.
+      </p>
     </div>
   </section>
 
