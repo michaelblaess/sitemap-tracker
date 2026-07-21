@@ -69,11 +69,23 @@ def _crawl_seconds(rate_per_minute: int) -> tuple[float, int]:
 
 
 class TestCrawlRateLimit:
-    def test_unlimited_crawl_is_fast(self) -> None:
-        """Referenzlauf: ohne Limit ist der Crawl lokal in Sekundenbruchteilen durch."""
-        elapsed, pages = _crawl_seconds(0)
+    def test_unlimited_crawl_reaches_all_pages(self) -> None:
+        """Referenzlauf ohne Limit: alle Unterseiten werden gefunden."""
+        _, pages = _crawl_seconds(0)
         assert pages >= _PAGE_COUNT, "Der Crawl hat die Unterseiten nicht gefunden"
-        assert elapsed < 2.0
+
+    def test_rate_limit_adds_waiting_time(self) -> None:
+        """Vergleicht gedrosselt gegen ungedrosselt - unabhaengig von der Maschine.
+
+        Eine absolute Obergrenze fuer den ungedrosselten Lauf waere flaky: auf
+        einem ausgelasteten CI-Runner dauert derselbe Crawl ein Vielfaches
+        (beobachtet: 2,3 s statt 0,08 s). Die Wartezeit des Limiters kommt
+        dagegen additiv obendrauf, egal wie langsam die Maschine ist - der
+        Abstand zwischen beiden Laeufen ist damit belastbar.
+        """
+        unlimited, _ = _crawl_seconds(0)
+        limited, _ = _crawl_seconds(60)  # 1 s Abstand, sechs Seiten -> ~5 s Warten
+        assert limited >= unlimited + 3.0
 
     def test_rate_limit_slows_the_crawl_down(self) -> None:
         """1200/Minute = 50 ms Abstand; sechs Seiten warten also mehrere Intervalle."""
