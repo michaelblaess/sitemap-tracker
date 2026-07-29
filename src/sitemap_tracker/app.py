@@ -806,6 +806,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "render": self._settings.render,
             "show_preview": self._settings.show_preview,
             "concurrency": self._settings.concurrency,
+            "rate_limit_enabled": self._settings.rate_limit_enabled,
+            "rate_per_minute": self._settings.rate_per_minute,
             "timeout": self._settings.timeout,
             "max_depth": self._settings.max_depth,
             "max_retries": self._settings.max_retries,
@@ -813,6 +815,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "user_agent": self._settings.user_agent,
             "cookies": self._settings.cookies,
             "proxy_url": self._settings.proxy_url,
+            "jira_format": self._settings.jira_format,
         }
         self.push_screen(
             SitemapSettingsScreen(current, lang=current_language()),
@@ -864,6 +867,11 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._settings.cookies = cookies_raw
         self._settings.proxy_url = self.proxy_url
         self._settings.language = str(result.get("language", self._settings.language))
+        self._settings.jira_format = str(result.get("jira_format", self._settings.jira_format))
+        self._settings.rate_limit_enabled = bool(result.get("rate_limit_enabled", self._settings.rate_limit_enabled))
+        self._settings.rate_per_minute = int(str(result.get("rate_per_minute", self._settings.rate_per_minute)))
+        # Runtime-Wert fuer den naechsten Crawl (0 = ungebremst).
+        self.rate_per_minute = self._settings.rate_per_minute if self._settings.rate_limit_enabled else 0
         self._settings.save()
 
         # CrawlHeader-Konfiguration an die geaenderten Werte anpassen
