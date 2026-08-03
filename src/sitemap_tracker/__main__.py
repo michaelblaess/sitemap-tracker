@@ -6,7 +6,7 @@ import argparse
 import contextlib
 import os
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TextIO
 
 if TYPE_CHECKING:
     from sys import UnraisableHookArgs
@@ -26,7 +26,7 @@ from textual_widgets import reset_terminal_title, set_terminal_title
 
 # Log-Handle offen halten, solange der Prozess laeuft - faulthandler schreibt
 # beim fatalen Signal direkt hinein. Ohne Referenz wuerde der GC es schliessen.
-_fault_log: object | None = None
+_fault_log: TextIO | None = None
 
 from sitemap_tracker import __version__
 from sitemap_tracker.i18n import load_locale, t
@@ -327,6 +327,7 @@ def _enable_faulthandler() -> None:
     allem darunter. Die Startzeile ist die zweite Haelfte der Diagnose: steht
     danach nichts weiter in der Datei, wurde der Prozess von aussen abgeraeumt.
     """
+    import atexit
     import contextlib
     import faulthandler
     from datetime import datetime
@@ -344,6 +345,8 @@ def _enable_faulthandler() -> None:
         _fault_log.write(f"\n===== Start {stamp} - v{__version__} =====\n")
         _fault_log.flush()
         faulthandler.enable(file=_fault_log, all_threads=True)
+        # Gegenstueck zur Startzeile - siehe _write_fault_end.
+        atexit.register(_write_fault_end)
 
 
 def _reset_mouse_tracking() -> None:
@@ -360,3 +363,27 @@ def _reset_mouse_tracking() -> None:
         return
     stream.write("\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l\x1b[?1015l")
     stream.flush()
+
+
+def _write_fault_end() -> None:
+    """Schreibt die Endzeile der Sitzungsklammer (ueber atexit registriert).
+
+    Erst dieses Gegenstueck zur Startzeile macht die Datei aussagekraeftig:
+
+      Start + Ende            -> sauber beendet
+      Start + Traceback       -> Python-Fehler (der Handler hat ihn gesehen)
+      Start und sonst nichts  -> Prozess hart abgeraeumt
+
+    Unter Windows hilft ein Signalhandler dabei nicht: ein Abbruch von aussen
+    laeuft dort ueber TerminateProcess und liefert dem Ziel kein abfangbares
+    Signal. Die FEHLENDE Endzeile ist der einzige Beleg.
+    """
+    import contextlib
+    from datetime import datetime
+
+    if _fault_log is None:
+        return
+    with contextlib.suppress(Exception):
+        stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        _fault_log.write(f"===== Ende {stamp} =====\n")
+        _fault_log.flush()
