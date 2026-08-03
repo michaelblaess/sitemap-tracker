@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import dataclasses
+import traceback
 from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
@@ -34,7 +35,7 @@ from . import __author__, __version__, __year__
 from .i18n import current_language, t
 from .models.crawl_result import CrawlResult, PageStatus
 from .models.history import History, HistoryEntry
-from .models.settings import SETTINGS_FILE, Settings, parse_cookies
+from .models.settings import CRASH_LOG_NAME, SETTINGS_FILE, Settings, parse_cookies
 from .models.sitemap_reader import discover_sitemap, load_sitemap_from_file, load_sitemap_urls
 from .models.sitemap_writer import SitemapWriter
 from .services.crawler import Crawler
@@ -250,6 +251,29 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
                 yield StatsPanel(id="stats-panel")
 
         yield Footer()
+
+    def _handle_exception(self, error: Exception) -> None:
+        """Schreibt den Traceback auf Platte, bevor der Fehlerdialog laeuft.
+
+        Der CrashGuard zeigt den Traceback nur im Dialog an. Faellt dieser beim
+        Neuaufbau selbst mit (struktureller Defekt), geht der Bericht verloren und
+        der naechste Absturz ist wieder undiagnostizierbar - unter Windows bleibt
+        dann nur Maus-Steuerzeichen-Muell im Terminal zurueck. Die Datei ueberlebt
+        auch den harten Absturzpfad von Textual.
+        """
+        with contextlib.suppress(Exception):
+            self._persist_crash(error)
+        super()._handle_exception(error)
+
+    def _persist_crash(self, error: BaseException) -> None:
+        """Haengt den Traceback mit Zeitstempel an die Absturz-Datei an."""
+        report = "".join(traceback.format_exception(type(error), error, error.__traceback__))
+        path = SETTINGS_FILE.parent / CRASH_LOG_NAME
+        path.parent.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        header = f"\n===== {stamp} - sitemap-tracker v{__version__} =====\n"
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write(header + report)
 
     def _ask_disclaimer(self) -> None:
         """Holt den Haftungshinweis ein, solange er nicht (in dieser Fassung) bestaetigt ist."""
@@ -561,10 +585,14 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             self._crawl_running = False
             self._update_x_binding_label(t("binding.error_report"))
 
-        if not self._crawler:
-            # Abgebrochen
+        # Abgebrochen: die bereits gecrawlten Zeilen bleiben in der Tabelle stehen.
+        # Ohne die cancelled-Abfrage lief hier der komplette Abschluss weiter -
+        # samt "Crawl abgeschlossen", History-Statistik und Zusammenfassung, denn
+        # self._crawler wird erst ganz am Ende auf None gesetzt.
+        if crawler.cancelled or not self._crawler:
             self._write_log(t("log.crawl_cancelled"))
             self.sub_title = t("subtitle.cancelled")
+            self._crawler = None
             return
 
         stats = self._crawler.stats
@@ -665,6 +693,9 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._crawler.cancel()
         self._write_log(t("log.cancel_crawl"))
         self.notify(t("notify.crawl_cancelling"))
+        # Sichtbare Rueckmeldung, solange der Lauf ausleuft - der Toast ist nach
+        # ein paar Sekunden weg, die Kopfzeile bleibt.
+        self.sub_title = t("subtitle.cancelling")
 
     def _do_save_error_report(self) -> None:
         """Erzeugt und speichert einen JSON-Fehlerbericht."""

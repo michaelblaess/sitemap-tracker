@@ -260,6 +260,16 @@ class Crawler:
         """Bricht den Crawl-Vorgang ab."""
         self._cancelled = True
 
+    @property
+    def cancelled(self) -> bool:
+        """True, wenn der Lauf abgebrochen wurde.
+
+        Die Auswertung braucht das nach dem Lauf: ein abgebrochener Crawl darf
+        keine Abschlussmeldung und keine Statistik erzeugen, sonst sieht ein
+        Teilergebnis wie ein vollstaendiges aus.
+        """
+        return self._cancelled
+
     def _full_normalize(self, url: str) -> str:
         """Normalisiert eine URL vollstaendig inkl. Scheme-Anpassung.
 

@@ -18,7 +18,7 @@ from textual_widgets import BaseSettingsScreen
 
 from ..i18n import t
 from ..models.history import History
-from ..models.settings import SETTINGS_FILE
+from ..models.settings import CRASH_LOG_NAME, SETTINGS_FILE
 from ..services.preview_service import CACHE_DIR as PREVIEW_CACHE_DIR
 
 
@@ -173,11 +173,21 @@ class SitemapSettingsScreen(BaseSettingsScreen):
 
     def storage_paths(self) -> list[tuple[str, Path]]:
         """Liefert die Persistenz-Pfade fuer den Speicherort-Tab."""
-        return [
+        paths: list[tuple[str, Path]] = [
             (t("settings.storage.config"), SETTINGS_FILE),
             (t("settings.storage.history"), History.HISTORY_FILE),
             (t("settings.storage.preview_cache"), PREVIEW_CACHE_DIR),
         ]
+        # Nur auffuehren, wenn es sie gibt - sonst schickt der Tab den Anwender
+        # zu einer Datei, die nie angelegt wurde.
+        for key, name in (
+            ("settings.storage.crash", CRASH_LOG_NAME),
+            ("settings.storage.fault", "fault.log"),
+        ):
+            datei = SETTINGS_FILE.parent / name
+            if datei.is_file():
+                paths.append((t(key), datei))
+        return paths
 
     @staticmethod
     def _clamp(value: object, default: int, lo: int, hi: int) -> int:
