@@ -137,7 +137,7 @@ class FileCheckScreen(ModalScreen[None]):
                 yield DataTable(id="fc-table", cursor_type="row", zebra_stripes=True)
             with Horizontal(id="fc-buttons"):
                 yield Button(t("filecheck.btn_run"), variant="primary", id="fc-run")
-                yield Button(t("common.btn_close"), variant="default", id="fc-close")
+                yield Button(t("binding.close"), variant="default", id="fc-close")
 
     def on_mount(self) -> None:
         """Richtet Tabelle und Fokus ein.
