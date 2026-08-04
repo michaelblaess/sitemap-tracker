@@ -231,6 +231,51 @@ class TestDialogDurchlauf:
             erste = [str(z) for z in tabelle.get_row_at(0)]
             assert erste[0] == "404", f"die kaputte Datei gehoert nach oben: {erste}"
 
+    async def test_export_in_die_zwischenablage(self, server: str) -> None:
+        """Die volle URL muss rauskopierbar sein - in der Tabelle ist sie gekuerzt."""
+        from textual.widgets import Button
+
+        app, ergebnis = await self._oeffne(server, {})
+        kopiert: list[str] = []
+        async with app.run_test(size=(140, 45)) as pilot:
+            app._results = [ergebnis]
+            app._document_links = {f"{server}/sehr-langer-name-der-abgeschnitten-wird.pdf": "seite"}
+            app._settings.rate_limit_enabled = False
+            app._settings.proxy_url = ""
+            app.copy_to_clipboard = kopiert.append  # type: ignore[method-assign]
+
+            await pilot.press("p")
+            for _ in range(25):
+                await pilot.pause()
+            screen = app.screen
+            screen.query_one("#fc-run", Button).press()
+            for _ in range(90):
+                await pilot.pause()
+
+            screen.query_one("#fc-copy", Button).press()
+            await pilot.pause()
+
+        assert kopiert, "es wurde nichts kopiert"
+        assert "sehr-langer-name-der-abgeschnitten-wird.pdf" in kopiert[0]
+        assert kopiert[0].count("\t") == 3, "erwartet: Status, Groesse, URL, Fundort"
+
+    async def test_ohne_ergebnis_wird_nichts_kopiert(self, server: str) -> None:
+        """Kopieren vor dem Pruefen soll einen Hinweis geben, nicht abstuerzen."""
+        from textual.widgets import Button
+
+        app, ergebnis = await self._oeffne(server, {})
+        kopiert: list[str] = []
+        async with app.run_test(size=(140, 45)) as pilot:
+            app._results = [ergebnis]
+            app._document_links = {f"{server}/a.pdf": "seite"}
+            app.copy_to_clipboard = kopiert.append  # type: ignore[method-assign]
+            await pilot.press("p")
+            for _ in range(25):
+                await pilot.pause()
+            app.screen.query_one("#fc-copy", Button).press()
+            await pilot.pause()
+        assert not kopiert
+
     async def test_ohne_dateien_kein_dialog(self, server: str) -> None:
         """Ohne eingesammelte Links soll die Taste gar nicht erst greifen."""
         app, ergebnis = await self._oeffne(server, {})
@@ -259,6 +304,44 @@ class TestCrawlerSammeltDateien:
         crawler = Crawler(start_url="https://example.com")
         crawler._enqueue("https://example.com/seite", 1, "https://example.com/")
         assert crawler.document_links == {}
+
+    def test_datei_wird_auch_jenseits_der_tiefe_gemerkt(self) -> None:
+        """Die Tiefenbegrenzung bremst den Crawl, nicht die Dateisammlung.
+
+        Ein PDF wird ohnehin nie geholt - es aus der Pruefung zu werfen, nur
+        weil es tief verlinkt ist, verschweigt genau die toten Dateien, die man
+        sucht. Real aufgefallen: 20 gefundene PDFs bei max_depth 10.
+        """
+        crawler = Crawler(start_url="https://example.com", max_depth=1)
+        # Tiefe erschoepft (depth + 1 > max_depth), Link zeigt auf ein PDF.
+        crawler._verarbeite_link_jenseits_der_tiefe(
+            "https://example.com/tief.pdf", "https://example.com/seite"
+        )
+        assert "https://example.com/tief.pdf" in crawler.document_links
+
+    def test_eingebettetes_pdf_wird_gefunden(self) -> None:
+        """PDF-Viewer haengen an embed/iframe/object, nicht an <a href>."""
+        from bs4 import BeautifulSoup
+
+        html = """
+            <a href="/normal.pdf">Verlinkt</a>
+            <embed src="/eingebettet.pdf" type="application/pdf">
+            <iframe src="/im-rahmen.pdf"></iframe>
+            <object data="/objekt.pdf"></object>
+        """
+        crawler = Crawler(start_url="https://example.com")
+        gefunden = {
+            url
+            for url, _ in crawler._extract_links(
+                BeautifulSoup(html, "lxml"), "https://example.com/"
+            )
+        }
+        assert gefunden == {
+            "https://example.com/normal.pdf",
+            "https://example.com/eingebettet.pdf",
+            "https://example.com/im-rahmen.pdf",
+            "https://example.com/objekt.pdf",
+        }
 
     def test_erster_fundort_bleibt_erhalten(self) -> None:
         """Dieselbe Datei auf mehreren Seiten - der erste Fundort genuegt."""

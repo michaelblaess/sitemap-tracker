@@ -462,6 +462,8 @@ class Crawler:
                 if depth + 1 <= self.max_depth:
                     if self._enqueue(link_url, depth + 1, url):
                         new_links += 1
+                elif self._verarbeite_link_jenseits_der_tiefe(normalized, url):
+                    pass
                 else:
                     # Max-Depth erreicht - trotzdem zaehlen
                     if normalized not in self._seen:
@@ -613,15 +615,25 @@ class Crawler:
                 result.tech = detect_tech(soup, norm_headers)
                 result.seo = extract_seo(soup)
 
-            # Links mit Text aus dem gerenderten DOM extrahieren
+            # Links mit Text aus dem gerenderten DOM extrahieren. Eingebettete
+            # Dokumente (PDF-Viewer) haengen nicht an einem <a href> und wuerden
+            # sonst aus der Datei-Pruefung herausfallen.
             links_data = await page.evaluate(
                 "() => {"
-                "  return [...document.querySelectorAll('a[href]')]"
+                "  const aus = [...document.querySelectorAll('a[href]')]"
                 "    .filter(a => a.href && a.href.startsWith('http'))"
                 "    .map(a => ({"
                 "      href: a.href,"
                 "      text: (a.textContent || '').trim().substring(0, 200)"
                 "    }));"
+                "  for (const el of document.querySelectorAll("
+                "      'embed[src], iframe[src], object[data]')) {"
+                "    const ziel = el.src || el.data;"
+                "    if (ziel && ziel.startsWith('http')) {"
+                "      aus.push({ href: ziel, text: '' });"
+                "    }"
+                "  }"
+                "  return aus;"
                 "}"
             )
 
@@ -663,6 +675,19 @@ class Crawler:
                 link_text = tag.get_text(strip=True)[:200]
                 links.append((absolute, link_text))
 
+        # Eingebettete Dokumente. Ein PDF haengt oft nicht an einem <a href>,
+        # sondern steckt in einem Viewer - ohne diese Tags faellt es aus der
+        # Pruefung heraus, obwohl es fuer den Besucher sichtbar ist.
+        for tag_name, attribut in (("embed", "src"), ("iframe", "src"), ("object", "data")):
+            for tag in soup.find_all(tag_name, **{attribut: True}):
+                roh = tag[attribut]
+                wert = (roh if isinstance(roh, str) else " ".join(roh)).strip()
+                if not wert or wert.startswith(("#", "javascript:", "data:", "about:")):
+                    continue
+                absolute, _ = urldefrag(urljoin(base_url, wert))
+                if self._is_internal(absolute):
+                    links.append((absolute, ""))
+
         return links
 
     def _is_internal(self, url: str) -> bool:
@@ -676,6 +701,41 @@ class Crawler:
         """
         parsed = urlparse(url)
         return parsed.netloc.lower() == self._allowed_domain
+
+    def _verarbeite_link_jenseits_der_tiefe(self, normalized: str, parent: str) -> bool:
+        """Merkt Datei-Links, die erst hinter der Tiefenbegrenzung auftauchen.
+
+        Die Begrenzung soll den CRAWL bremsen. Eine Datei wird ohnehin nie
+        geholt, kostet also nichts - sie hier fallen zu lassen, verschweigt
+        genau die toten Dateien, die man mit der Pruefung sucht.
+
+        Args:
+            normalized:
+                Die bereits normalisierte Ziel-URL.
+            parent:
+                Die Seite, auf der der Link steht.
+
+        Returns:
+            True, wenn es eine Datei war und sie gemerkt wurde.
+        """
+        if not self._ist_datei(normalized):
+            return False
+        self._document_links.setdefault(normalized, parent)
+        return True
+
+    @staticmethod
+    def _ist_datei(url: str) -> bool:
+        """Prueft, ob die URL auf eine nicht crawlbare Datei zeigt.
+
+        Args:
+            url:
+                Die bereits normalisierte URL.
+
+        Returns:
+            True bei einer Endung aus SKIP_EXTENSIONS.
+        """
+        pfad = urlparse(url).path.lower()
+        return any(pfad.endswith(ext) for ext in SKIP_EXTENSIONS)
 
     def _enqueue(self, url: str, depth: int, parent: str) -> bool:
         """Fuegt eine URL zur Crawl-Queue hinzu (wenn noch nicht gesehen).
@@ -700,11 +760,9 @@ class Crawler:
         # keine Folgelinks), aber gemerkt - sonst laesst sich spaeter nicht
         # pruefen, ob sie ueberhaupt erreichbar sind. Der Fundort kommt mit,
         # damit man eine tote Datei der verweisenden Seite zuordnen kann.
-        path = urlparse(normalized).path.lower()
-        for ext in SKIP_EXTENSIONS:
-            if path.endswith(ext):
-                self._document_links.setdefault(normalized, parent)
-                return False
+        if self._ist_datei(normalized):
+            self._document_links.setdefault(normalized, parent)
+            return False
 
         self._seen.add(normalized)
         self._queue.append((normalized, depth, parent))

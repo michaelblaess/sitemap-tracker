@@ -87,6 +87,12 @@ class FileCheckScreen(ModalScreen[None]):
         max-height: 60%;
     }
 
+    FileCheckScreen #fc-hint {
+        height: auto;
+        color: $text-muted;
+        margin-top: 1;
+    }
+
     FileCheckScreen DataTable {
         height: auto;
         max-height: 20;
@@ -106,6 +112,7 @@ class FileCheckScreen(ModalScreen[None]):
     BINDINGS = [
         Binding("escape", "close", "close"),
         Binding("ctrl+r", "run", "run"),
+        Binding("ctrl+c", "copy", "copy", priority=True),
     ]
 
     def __init__(self, links: dict[str, str], checker: FileChecker) -> None:
@@ -135,8 +142,10 @@ class FileCheckScreen(ModalScreen[None]):
             yield Static(self._info_text(), id="fc-info")
             with VerticalScroll(id="fc-scroll"):
                 yield DataTable(id="fc-table", cursor_type="row", zebra_stripes=True)
+            yield Static(t("filecheck.row_hint"), id="fc-hint")
             with Horizontal(id="fc-buttons"):
                 yield Button(t("filecheck.btn_run"), variant="primary", id="fc-run")
+                yield Button(t("filecheck.btn_copy"), variant="default", id="fc-copy")
                 yield Button(t("binding.close"), variant="default", id="fc-close")
 
     def on_mount(self) -> None:
@@ -205,9 +214,43 @@ class FileCheckScreen(ModalScreen[None]):
     def _on_run(self) -> None:
         self.action_run()
 
+    @on(Button.Pressed, "#fc-copy")
+    def _on_copy(self) -> None:
+        self.action_copy()
+
     @on(Button.Pressed, "#fc-close")
     def _on_close(self) -> None:
         self.action_close()
+
+    @on(DataTable.RowSelected, "#fc-table")
+    def _on_row_selected(self, event: DataTable.RowSelected) -> None:
+        """Kopiert die URL der gewaehlten Zeile.
+
+        In der Tabelle ist eine lange URL abgeschnitten. Sie dort nur zu sehen
+        nuetzt nichts - man will sie im Browser aufrufen, und dafuer muss sie
+        vollstaendig in die Zwischenablage.
+        """
+        if self._summary is None or event.cursor_row >= len(self._summary.results):
+            return
+        url = self._summary.results[event.cursor_row].url
+        self.app.copy_to_clipboard(url)
+        self.app.notify(t("filecheck.copied_one", url=url))
+
+    def action_copy(self) -> None:
+        """Legt die gesamte Ergebnisliste als Text in die Zwischenablage."""
+        if self._summary is None or not self._summary.results:
+            self.app.notify(t("filecheck.nothing_to_copy"), severity="warning")
+            return
+        zeilen = [self._als_text(e) for e in self._summary.results]
+        self.app.copy_to_clipboard("\n".join(zeilen))
+        self.app.notify(t("filecheck.copied", count=len(zeilen)))
+
+    @staticmethod
+    def _als_text(ergebnis: FileCheckResult) -> str:
+        """Eine Ergebniszeile als Klartext - tabgetrennt, gut einfuegbar."""
+        status = ergebnis.error_message or str(ergebnis.status_code)
+        groesse = ergebnis.size_display if ergebnis.ok else ""
+        return f"{status}\t{groesse}\t{ergebnis.url}\t{ergebnis.fundort}"
 
     def action_close(self) -> None:
         if self._laeuft:
