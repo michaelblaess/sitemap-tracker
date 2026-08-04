@@ -50,6 +50,14 @@ curl -fsSL https://raw.githubusercontent.com/michaelblaess/sitemap-tracker/main/
 irm https://raw.githubusercontent.com/michaelblaess/sitemap-tracker/main/install.ps1 | iex
 ```
 
+> **Intel-Macs:** Dort findet der Installer kein passendes Paket. Die fertigen
+> Programmdateien werden nur für Apple Silicon (arm64) gebaut, und Rosetta
+> hilft nicht - es übersetzt x86 nach arm, nicht umgekehrt. Nimm stattdessen
+> den Weg über den Quellcode: Repository klonen, einmalig `./bootstrap.sh`,
+> danach mit `./run.sh` starten. Dafür braucht es
+> [uv](https://docs.astral.sh/uv/), das ein zu Deinem Prozessor passendes
+> Python holt.
+
 ## Verwendung
 
 ```bash
