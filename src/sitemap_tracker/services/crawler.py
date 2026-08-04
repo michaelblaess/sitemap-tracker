@@ -107,6 +107,10 @@ class Crawler:
         self._results: dict[str, CrawlResult] = {}
         self._queue: deque[tuple[str, int, str]] = deque()  # (url, depth, parent)
         self._seen: set[str] = set()
+        # Nicht crawlbare Ziele (PDF, Office, Archive, Bilder): URL -> Fundort.
+        # Werden beim Einreihen aussortiert und hier gemerkt, damit sie sich
+        # nachtraeglich auf Erreichbarkeit pruefen lassen.
+        self._document_links: dict[str, str] = {}
         self._seed_urls: list[str] = []  # Zusaetzliche URLs aus Sitemap
         self._pending_referrers: dict[str, list[dict]] = {}  # URL -> [{url, link_text}]
         self._robots = RobotsChecker()
@@ -134,6 +138,17 @@ class Crawler:
     def stats(self) -> CrawlStats:
         """Aktuelle Crawl-Statistiken."""
         return self._stats
+
+    @property
+    def document_links(self) -> dict[str, str]:
+        """Gefundene, nicht gecrawlte Datei-Links als ``URL -> Fundort``.
+
+        Enthaelt alles, was wegen seiner Endung aus der Queue geflogen ist -
+        PDF, Office-Dokumente, Archive, Bilder. Der Crawl selbst holt diese
+        Ziele nicht ab, deshalb sagt die Liste nichts ueber ihre
+        Erreichbarkeit aus - das macht erst die Pruefung im FileChecker.
+        """
+        return dict(self._document_links)
 
     async def crawl(
         self,
@@ -681,10 +696,14 @@ class Crawler:
         if normalized in self._seen:
             return False
 
-        # Datei-Endung pruefen
+        # Datei-Endung pruefen. Solche Ziele werden NICHT gecrawlt (ein PDF hat
+        # keine Folgelinks), aber gemerkt - sonst laesst sich spaeter nicht
+        # pruefen, ob sie ueberhaupt erreichbar sind. Der Fundort kommt mit,
+        # damit man eine tote Datei der verweisenden Seite zuordnen kann.
         path = urlparse(normalized).path.lower()
         for ext in SKIP_EXTENSIONS:
             if path.endswith(ext):
+                self._document_links.setdefault(normalized, parent)
                 return False
 
         self._seen.add(normalized)

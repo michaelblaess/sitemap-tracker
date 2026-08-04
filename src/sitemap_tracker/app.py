@@ -8,6 +8,7 @@ import dataclasses
 import traceback
 from datetime import datetime
 from pathlib import Path
+from typing import TYPE_CHECKING
 from urllib.parse import urlparse
 
 from rich.markup import escape as escape_markup
@@ -48,6 +49,11 @@ from .widgets.preview_panel import PreviewPanel
 from .widgets.stats_panel import StatsPanel
 from .widgets.url_table import UrlTable
 
+if TYPE_CHECKING:
+    # Nur fuer die Annotation - der Screen wird erst in action_check_files
+    # importiert, damit der Start nicht unnoetig Module zieht.
+    from .screens.file_check import FileCheckScreen
+
 # Log-Hoehe: min/max/default (Zeilen)
 LOG_HEIGHT_DEFAULT = 15
 LOG_HEIGHT_MIN = 5
@@ -66,6 +72,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         Binding("c", "start_crawl", "placeholder"),
         Binding("x", "action_x", "placeholder"),
         Binding("m", "save_sitemap", "placeholder"),
+        Binding("p,P", "check_files", "placeholder", key_display="p"),
         Binding("s", "show_settings", "placeholder"),
         Binding("h", "show_history", "placeholder"),
         Binding("e", "toggle_errors", "placeholder"),
@@ -149,6 +156,10 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         # Site-Score des zuletzt abgeschlossenen Crawls (fuer die
         # Zusammenfassung). None solange kein Crawl abgeschlossen wurde.
         self._last_score: SiteScore | None = None
+        # Verlinkte, nicht gecrawlte Dateien des letzten Laufs (URL -> Fundort).
+        # Lebt nur in dieser Sitzung - nach einem Neustart oder History-Restore
+        # muss erneut gecrawlt werden.
+        self._document_links: dict[str, str] = {}
         self._official_sitemap_urls: set[str] = set()
         # Startklar nach History-Auswahl -> Footer-Taste "c" blinkt, bis der
         # Crawl startet. Wird in _on_history_selected gesetzt.
@@ -182,6 +193,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "start_crawl": t("binding.crawl"),
             "action_x": t("binding.cancel"),
             "save_sitemap": t("binding.save_sitemap"),
+            "check_files": t("binding.check_files"),
             "show_settings": t("binding.settings"),
             "show_history": t("binding.history"),
             "toggle_errors": t("binding.errors_only"),
@@ -202,6 +214,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "start_crawl": t("tooltip.crawl"),
             "action_x": t("tooltip.cancel"),
             "save_sitemap": t("tooltip.save_sitemap"),
+            "check_files": t("tooltip.check_files"),
             "show_settings": t("tooltip.settings"),
             "show_history": t("tooltip.history"),
             "toggle_errors": t("tooltip.errors_only"),
@@ -643,6 +656,10 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._last_score.sitemap_urls = sitemap_urls
         self._last_score.resolved_redirects = resolved
         self._warn_if_all_redirected(stats)
+        # Datei-Links sichern, BEVOR der Crawler verworfen wird - sonst waeren
+        # sie fuer die Pruefung (Taste p) verloren.
+        if self._crawler is not None:
+            self._document_links = self._crawler.document_links
         self._refresh_summary_binding()
 
         # Auto-Save wenn --output angegeben
@@ -791,6 +808,63 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         Reporter.save_error_report(self._results, stats, self.start_url, filename)
         self._write_log(t("log.error_report_written", filename=self.link_markup(filename, filename), count=len(errors)))
         self.notify(t("notify.error_report", filename=filename, count=len(errors)))
+
+    def action_check_files(self) -> None:
+        """Oeffnet den Dialog zur Pruefung verlinkter Dateien (PDF, Office ...).
+
+        Geprueft werden die beim Crawl eingesammelten Datei-Links. Der Crawl
+        selbst holt sie nicht ab, deshalb faellt eine tote Datei sonst nicht
+        auf - genau der Fall vom 04.08.2026 mit einem zeitweise nicht
+        abrufbaren PDF.
+        """
+        if not self._document_links:
+            self.notify(t("filecheck.no_files"), severity="warning")
+            return
+
+        from .screens.file_check import FileCheckScreen
+        from .services.file_checker import FileChecker
+
+        # Dieselben Ruecksichten wie beim Crawl - ein Schwung ungebremster
+        # Anfragen laeuft sonst in dieselbe Bot-Abwehr.
+        checker = FileChecker(
+            timeout=self._settings.timeout,
+            concurrency=self._settings.concurrency,
+            rate_per_minute=self._settings.rate_per_minute if self._settings.rate_limit_enabled else 0,
+            user_agent=self._settings.user_agent,
+            proxy=self._settings.proxy_url,
+            cookies=self._settings.cookies,
+        )
+        self.push_screen(FileCheckScreen(self._document_links, checker))
+
+    def on_file_check_screen_finished(self, event: FileCheckScreen.Finished) -> None:
+        """Schreibt das Pruefergebnis ins Log - inklusive klickbarer Links.
+
+        Benannter Handler statt ``@on``-Dekorator: der Screen wird erst in
+        ``action_check_files`` importiert, die Klasse steht zur
+        Definitionszeit also gar nicht zur Verfuegung.
+        """
+        summary = event.summary
+        fehler = summary.failed
+        if not fehler:
+            self._write_log(t("log.filecheck_all_ok", total=summary.total))
+            return
+        self._write_log(
+            t(
+                "log.filecheck_done",
+                total=summary.total,
+                ok=summary.ok_count,
+                failed=len(fehler),
+            )
+        )
+        for ergebnis in fehler:
+            self._write_log(
+                t(
+                    "log.filecheck_failed_item",
+                    status=ergebnis.error_message or ergebnis.status_code,
+                    link=self.link_markup(ergebnis.url, ergebnis.url),
+                    source=ergebnis.fundort or "-",
+                )
+            )
 
     def action_save_sitemap(self) -> None:
         """Oeffnet den Speichern-unter-Dialog fuer die Sitemap-XML."""
@@ -1419,6 +1493,10 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             return None if self._crawl_running else True
         if action == "save_sitemap":
             return True if self._results else None
+        if action == "check_files":
+            # Nur anbieten, wenn der letzte Lauf tatsaechlich Datei-Links
+            # eingesammelt hat - sonst oeffnet der Dialog ins Leere.
+            return True if self._document_links else None
         if action == "toggle_errors":
             return True if self._results else None
         if action in ("jira_report", "copy_detail", "save_forms"):
