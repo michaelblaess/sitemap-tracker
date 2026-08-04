@@ -231,18 +231,30 @@ class TestDialogDurchlauf:
             erste = [str(z) for z in tabelle.get_row_at(0)]
             assert erste[0] == "404", f"die kaputte Datei gehoert nach oben: {erste}"
 
-    async def test_export_in_die_zwischenablage(self, server: str) -> None:
+    async def test_export_in_die_zwischenablage(
+        self, server: str, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         """Die volle URL muss rauskopierbar sein - in der Tabelle ist sie gekuerzt."""
         from textual.widgets import Button
 
+        from sitemap_tracker.screens import file_check
+
         app, ergebnis = await self._oeffne(server, {})
         kopiert: list[str] = []
+
+        # Die echte Zwischenablage bleibt unangetastet - ein Testlauf darf dem
+        # Entwickler nicht die Ablage ueberschreiben.
+        def fake(text: str) -> bool:
+            kopiert.append(text)
+            return True
+
+        monkeypatch.setattr(file_check, "in_zwischenablage", fake)
+
         async with app.run_test(size=(140, 45)) as pilot:
             app._results = [ergebnis]
             app._document_links = {f"{server}/sehr-langer-name-der-abgeschnitten-wird.pdf": "seite"}
             app._settings.rate_limit_enabled = False
             app._settings.proxy_url = ""
-            app.copy_to_clipboard = kopiert.append  # type: ignore[method-assign]
 
             await pilot.press("p")
             for _ in range(25):
@@ -342,6 +354,77 @@ class TestCrawlerSammeltDateien:
             "https://example.com/im-rahmen.pdf",
             "https://example.com/objekt.pdf",
         }
+
+    def test_datei_ohne_www_wird_mitgenommen(self) -> None:
+        """Sitefinity verlinkt Dokumente mal mit, mal ohne www.
+
+        Real gemessen: 4 von 15 PDFs auf fuenf Stichprobenseiten fehlten allein
+        deswegen, weil _is_internal den Host exakt vergleicht.
+        """
+        from bs4 import BeautifulSoup
+
+        html = '<a href="https://kunde.example/files/docs/preis.pdf">Preise</a>'
+        crawler = Crawler(start_url="https://www.kunde.example")
+        gefunden = {
+            url
+            for url, _ in crawler._extract_links(
+                BeautifulSoup(html, "lxml"), "https://www.kunde.example/seite"
+            )
+        }
+        assert "https://kunde.example/files/docs/preis.pdf" in gefunden
+
+    def test_seite_ohne_www_bleibt_aussen_vor(self) -> None:
+        """Die Ausnahme gilt NUR fuer Dateien - HTML-Seiten nicht.
+
+        Sonst zoege der Crawl die www-lose Variante der ganzen Site herein und
+        crawlte alles doppelt.
+        """
+        from bs4 import BeautifulSoup
+
+        html = '<a href="https://kunde.example/bereich-a/seite">Seite</a>'
+        crawler = Crawler(start_url="https://www.kunde.example")
+        assert not crawler._extract_links(
+            BeautifulSoup(html, "lxml"), "https://www.kunde.example/seite"
+        )
+
+    def test_vergessenes_test_praefix_wird_mitgenommen(self) -> None:
+        """Redakteure uebernehmen Links aus der Testumgebung und vergessen sie.
+
+        Die Datei soll gefunden werden - und der Link ist selbst der Befund.
+        """
+        from bs4 import BeautifulSoup
+
+        html = '<a href="https://test.kunde.example/files/docs/preis.pdf">Preise</a>'
+        crawler = Crawler(start_url="https://www.kunde.example")
+        gefunden = {
+            url
+            for url, _ in crawler._extract_links(
+                BeautifulSoup(html, "lxml"), "https://www.kunde.example/seite"
+            )
+        }
+        assert "https://test.kunde.example/files/docs/preis.pdf" in gefunden
+        assert crawler.ist_fremde_umgebung("https://test.kunde.example/files/docs/preis.pdf")
+        assert not crawler.ist_fremde_umgebung("https://www.kunde.example/files/docs/preis.pdf")
+
+    def test_fremde_umgebung_wird_im_ergebnis_markiert(self) -> None:
+        """Auch bei Status 200 muss die Markierung im Ergebnis stehen."""
+        from sitemap_tracker.services.file_checker import FileChecker
+
+        checker = FileChecker(rate_per_minute=0, basis_host="www.kunde.example")
+        assert checker._ist_fremd("https://test.kunde.example/x.pdf")
+        assert checker._ist_fremd("https://kunde.example/x.pdf")
+        assert not checker._ist_fremd("https://www.kunde.example/x.pdf")
+        assert not checker._ist_fremd("https://shop.kunde.example/x.pdf")
+
+    def test_schwester_subdomain_bleibt_aussen_vor(self) -> None:
+        """Nur das www. wird ignoriert, keine andere Subdomain."""
+        from bs4 import BeautifulSoup
+
+        html = '<a href="https://shop.kunde.example/files/docs/x.pdf">Fremd</a>'
+        crawler = Crawler(start_url="https://www.kunde.example")
+        assert not crawler._extract_links(
+            BeautifulSoup(html, "lxml"), "https://www.kunde.example/seite"
+        )
 
     def test_erster_fundort_bleibt_erhalten(self) -> None:
         """Dieselbe Datei auf mehreren Seiten - der erste Fundort genuegt."""

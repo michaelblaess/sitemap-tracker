@@ -833,6 +833,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             user_agent=self._settings.user_agent,
             proxy=self._settings.proxy_url,
             cookies=self._settings.cookies,
+            basis_host=urlparse(self.start_url).netloc,
         )
         self.push_screen(FileCheckScreen(self._document_links, checker))
 
@@ -844,6 +845,19 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         Definitionszeit also gar nicht zur Verfuegung.
         """
         summary = event.summary
+        # Dateien auf einer fremden Umgebung sind auch dann ein Befund, wenn
+        # sie erreichbar sind - der Link zeigt aus PROD in die Testumgebung.
+        if summary.fremde_umgebung:
+            self._write_log(t("log.filecheck_foreign", count=len(summary.fremde_umgebung)))
+            for ergebnis in summary.fremde_umgebung:
+                self._write_log(
+                    t(
+                        "log.filecheck_failed_item",
+                        status=urlparse(ergebnis.url).netloc,
+                        link=self.link_markup(ergebnis.url, ergebnis.url),
+                        source=ergebnis.fundort or "-",
+                    )
+                )
         fehler = summary.failed
         if not fehler:
             self._write_log(t("log.filecheck_all_ok", total=summary.total))

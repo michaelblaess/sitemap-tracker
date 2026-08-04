@@ -22,6 +22,7 @@ from textual.widgets import Button, DataTable, Input, Static
 
 from ..i18n import t
 from ..services.file_checker import FileChecker, filter_by_extensions, parse_extensions
+from ..services.zwischenablage import in_zwischenablage
 
 if TYPE_CHECKING:
     from ..services.file_checker import FileCheckResult, FileCheckSummary
@@ -204,6 +205,10 @@ class FileCheckScreen(ModalScreen[None]):
             if fehler:
                 text.append("  ")
                 text.append(t("filecheck.result_failed", count=fehler), style="bold red")
+            fremd = len(self._summary.fremde_umgebung)
+            if fremd:
+                text.append("  ")
+                text.append(t("filecheck.result_foreign", count=fremd), style="bold yellow")
             return text
         return Text(
             t("filecheck.info", total=len(self._links), selected=len(self._gefiltert())),
@@ -233,7 +238,7 @@ class FileCheckScreen(ModalScreen[None]):
         if self._summary is None or event.cursor_row >= len(self._summary.results):
             return
         url = self._summary.results[event.cursor_row].url
-        self.app.copy_to_clipboard(url)
+        self._kopieren(url)
         self.app.notify(t("filecheck.copied_one", url=url))
 
     def action_copy(self) -> None:
@@ -242,8 +247,19 @@ class FileCheckScreen(ModalScreen[None]):
             self.app.notify(t("filecheck.nothing_to_copy"), severity="warning")
             return
         zeilen = [self._als_text(e) for e in self._summary.results]
-        self.app.copy_to_clipboard("\n".join(zeilen))
+        self._kopieren("\n".join(zeilen))
         self.app.notify(t("filecheck.copied", count=len(zeilen)))
+
+    def _kopieren(self, text: str) -> None:
+        """Legt Text in die Zwischenablage - System zuerst, Terminal als Rueckfall.
+
+        Textuals ``copy_to_clipboard`` schickt eine OSC-52-Sequenz ans Terminal.
+        Windows Terminal reicht mehrzeilige Inhalte damit nicht sauber durch -
+        die Liste kam als eine einzige Zeile an. Der Weg ueber ``clip`` behaelt
+        die Umbrueche, deshalb hat er Vorrang.
+        """
+        if not in_zwischenablage(text):
+            self.app.copy_to_clipboard(text)
 
     @staticmethod
     def _als_text(ergebnis: FileCheckResult) -> str:
@@ -305,11 +321,16 @@ class FileCheckScreen(ModalScreen[None]):
         """Baut eine Tabellenzeile - Status farbig, Fehlertext statt Code."""
         if ergebnis.error_message:
             status = Text(t("filecheck.status_error"), style="bold red")
-        elif ergebnis.ok:
-            status = Text(str(ergebnis.status_code), style="green")
-        else:
+        elif not ergebnis.ok:
             status = Text(str(ergebnis.status_code), style="bold red")
+        elif ergebnis.fremde_umgebung:
+            # Erreichbar, aber auf der falschen Umgebung - eigener Befund.
+            status = Text(str(ergebnis.status_code), style="bold yellow")
+        else:
+            status = Text(str(ergebnis.status_code), style="green")
         hinweis = ergebnis.error_message or ergebnis.fundort
+        if ergebnis.fremde_umgebung:
+            hinweis = f"{t('filecheck.foreign_env')} {hinweis}"
         # Groesse nur bei erreichbaren Dateien - bei einem 404 waere es die
         # Groesse der Fehlerseite, und "404, 155 KB" liest sich widerspruechlich.
         groesse = ergebnis.size_display if ergebnis.ok else ""

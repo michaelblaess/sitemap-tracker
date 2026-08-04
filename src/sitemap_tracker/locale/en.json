@@ -393,5 +393,8 @@
   "proxy.host_label": "Redirect target:",
   "proxy.advice": "The crawler deliberately does not follow external redirects to foreign domains and cannot reach the actual content pages. Please complete the gateway/SSO sign-in in your browser (finish single sign-on) and then crawl again.",
   "log.proxy_detected": "Proxy/gateway detected: start URL redirects to {host} - crawl aborted.",
-  "subtitle.proxy_detected": "Proxy/gateway detected - crawl aborted"
+  "subtitle.proxy_detected": "Proxy/gateway detected - crawl aborted",
+  "filecheck.foreign_env": "[FOREIGN ENV]",
+  "filecheck.result_foreign": "{count} on a foreign environment!",
+  "log.filecheck_foreign": "Warning: {count} file(s) live on a different environment - those links need fixing."
 }

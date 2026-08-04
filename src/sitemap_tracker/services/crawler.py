@@ -17,6 +17,7 @@ from playwright.async_api import Browser, Page, Playwright, ProxySettings, async
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, CrawlStats, PageStatus, friendly_error_message
 from ..models.robots import RobotsChecker
+from ..models.url_utils import ohne_umgebungspraefix
 from .page_analysis import detect_tech, extract_http_details, extract_seo
 from .rate_limit import RateLimiter
 
@@ -637,7 +638,11 @@ class Crawler:
                 "}"
             )
 
-            return [(item["href"], item.get("text", "")) for item in links_data if self._is_internal(item["href"])]
+            return [
+                (item["href"], item.get("text", ""))
+                for item in links_data
+                if self._is_internal(item["href"]) or self._ist_datei_derselben_site(item["href"])
+            ]
 
         finally:
             if page:
@@ -671,7 +676,7 @@ class Crawler:
             # Fragment entfernen
             absolute, _ = urldefrag(absolute)
 
-            if self._is_internal(absolute):
+            if self._is_internal(absolute) or self._ist_datei_derselben_site(absolute):
                 link_text = tag.get_text(strip=True)[:200]
                 links.append((absolute, link_text))
 
@@ -685,7 +690,7 @@ class Crawler:
                 if not wert or wert.startswith(("#", "javascript:", "data:", "about:")):
                     continue
                 absolute, _ = urldefrag(urljoin(base_url, wert))
-                if self._is_internal(absolute):
+                if self._is_internal(absolute) or self._ist_datei_derselben_site(absolute):
                     links.append((absolute, ""))
 
         return links
@@ -701,6 +706,58 @@ class Crawler:
         """
         parsed = urlparse(url)
         return parsed.netloc.lower() == self._allowed_domain
+
+    def _ist_datei_derselben_site(self, url: str) -> bool:
+        """Datei auf demselben Host, auch wenn das Umgebungs-Praefix abweicht.
+
+        Sitefinity verlinkt Dokumente mal mit, mal ohne ``www.`` - auf
+        www.kunde.example zeigen mehrere PDF-Links auf ``https://kunde.example/files/``.
+        ``_is_internal`` vergleicht den Host exakt und wirft sie damit als
+        "extern" weg, obwohl es dieselbe Site ist. Gemessen am 04.08.2026:
+        4 von 15 PDFs auf fuenf Stichprobenseiten fehlten allein deswegen.
+
+        Genauso rutschen Praefixe anderer Umgebungen durch (``test.``,
+        ``prod.``): ein Redakteur uebernimmt einen Link aus der Testumgebung und
+        vergisst ihn anzupassen. Solche Dateien werden mitgenommen UND als
+        umgebungsfremd gemeldet - der Link selbst ist dann der eigentliche Fund.
+
+        Bewusst eng: nur die bekannten Umgebungs-Praefixe werden ignoriert,
+        KEIN Vergleich auf die registrierbare Domain. Fachliche
+        Schwester-Subdomains wie ``shop.kunde.example`` bleiben aussen vor - das
+        ist eine andere Site.
+
+        Args:
+            url:
+                Die absolute Ziel-URL.
+
+        Returns:
+            True, wenn es eine Datei auf demselben Host ist.
+        """
+        if not self._ist_datei(url):
+            return False
+        return ohne_umgebungspraefix(urlparse(url).netloc) == ohne_umgebungspraefix(
+            self._allowed_domain
+        )
+
+    def ist_fremde_umgebung(self, url: str) -> bool:
+        """Prueft, ob die Datei auf einer ANDEREN Umgebung liegt als der Crawl.
+
+        Ein PROD-Dokument, das auf ``test.`` zeigt, ist kein Schoenheitsfehler,
+        sondern ein vergessener Link - genau das soll auffallen.
+
+        Args:
+            url:
+                Die absolute Ziel-URL.
+
+        Returns:
+            True, wenn der Host zwar zur Site gehoert, aber ein abweichendes
+            Umgebungs-Praefix traegt.
+        """
+        ziel = urlparse(url).netloc.lower().split(":")[0]
+        eigen = self._allowed_domain.lower().split(":")[0]
+        if ziel == eigen:
+            return False
+        return ohne_umgebungspraefix(ziel) == ohne_umgebungspraefix(eigen)
 
     def _verarbeite_link_jenseits_der_tiefe(self, normalized: str, parent: str) -> bool:
         """Merkt Datei-Links, die erst hinter der Tiefenbegrenzung auftauchen.

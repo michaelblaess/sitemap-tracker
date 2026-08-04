@@ -393,5 +393,8 @@
   "proxy.host_label": "Weiterleitungsziel:",
   "proxy.advice": "Der Crawler folgt externen Weiterleitungen auf fremde Domains bewusst nicht und kann die eigentlichen Inhaltsseiten nicht erreichen. Bitte im Browser die Gateway-/SSO-Anmeldung durchlaufen (Single-Sign-On abschließen) und anschließend erneut crawlen.",
   "log.proxy_detected": "Proxy/Gateway erkannt: Start-URL leitet auf {host} um - Crawl abgebrochen.",
-  "subtitle.proxy_detected": "Proxy/Gateway erkannt - Crawl abgebrochen"
+  "subtitle.proxy_detected": "Proxy/Gateway erkannt - Crawl abgebrochen",
+  "filecheck.foreign_env": "[FREMDE UMGEBUNG]",
+  "filecheck.result_foreign": "{count} auf fremder Umgebung!",
+  "log.filecheck_foreign": "Achtung: {count} Datei(en) liegen auf einer anderen Umgebung - die Links gehören angepasst."
 }

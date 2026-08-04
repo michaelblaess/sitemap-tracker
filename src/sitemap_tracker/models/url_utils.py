@@ -66,3 +66,43 @@ def same_host(host_a: str, host_b: str) -> bool:
     """
     norm_a = host_a.lower().split(":")[0]
     return bool(norm_a) and norm_a == host_b.lower().split(":")[0]
+
+
+# Host-Praefixe, die dieselbe Site in einer anderen Umgebung bezeichnen.
+# Redakteure uebernehmen Links aus der Testumgebung und vergessen sie
+# anzupassen - solche Ziele sollen gefunden und gemeldet werden.
+UMGEBUNGS_PRAEFIXE = (
+    "www.",
+    "prod.",
+    "produktion.",
+    "live.",
+    "test.",
+    "dev.",
+    "stage.",
+    "staging.",
+    "qa.",
+    "int.",
+    "preview.",
+)
+
+
+def ohne_umgebungspraefix(host: str) -> str:
+    """Entfernt ein fuehrendes Umgebungs-Praefix von einem Hostnamen.
+
+    Dient NICHT dem Sitemap-Scope - dort gilt weiterhin der exakte
+    Host-Vergleich in ``same_host``. Gedacht ist das fuer die Zuordnung von
+    Datei-Links, die mal mit und mal ohne ``www.`` bzw. mit einem vergessenen
+    ``test.`` verlinkt sind.
+
+    Args:
+        host:
+            Der Hostname, ggf. mit Port.
+
+    Returns:
+        Der Host in Kleinschreibung, ohne Port und ohne bekanntes Praefix.
+    """
+    rein = host.lower().split(":")[0]
+    for praefix in UMGEBUNGS_PRAEFIXE:
+        if rein.startswith(praefix):
+            return rein[len(praefix) :]
+    return rein

@@ -22,6 +22,7 @@ from urllib.parse import urlparse
 import httpx
 
 from ..models.crawl_result import friendly_error_message
+from ..models.url_utils import ohne_umgebungspraefix
 from .rate_limit import RateLimiter
 
 if TYPE_CHECKING:
@@ -42,6 +43,10 @@ class FileCheckResult:
     size_bytes: int = 0
     error_message: str = ""
     per_get_geprueft: bool = False
+    # Datei liegt auf einer anderen Umgebung (test./prod./...) als die
+    # gecrawlte Site. Auch bei Status 200 ein Befund: der Link gehoert
+    # angepasst, sonst zeigt PROD auf die Testumgebung.
+    fremde_umgebung: bool = False
 
     @property
     def ok(self) -> bool:
@@ -83,6 +88,11 @@ class FileCheckSummary:
     @property
     def ok_count(self) -> int:
         return sum(1 for r in self.results if r.ok)
+
+    @property
+    def fremde_umgebung(self) -> list[FileCheckResult]:
+        """Dateien, die auf einer anderen Umgebung liegen (test./prod./...)."""
+        return [r for r in self.results if r.fremde_umgebung]
 
 
 def filter_by_extensions(links: dict[str, str], extensions: Iterable[str]) -> dict[str, str]:
@@ -149,7 +159,11 @@ class FileChecker:
         user_agent: str = "",
         proxy: str = "",
         cookies: list[dict[str, str]] | None = None,
+        basis_host: str = "",
     ) -> None:
+        # Host der gecrawlten Site - dient nur dazu, Dateien aus einer anderen
+        # Umgebung (test./prod./...) als solche zu kennzeichnen.
+        self._basis_host = basis_host
         self._timeout = timeout
         self._concurrency = max(1, concurrency)
         self._limiter = RateLimiter(rate_per_minute)
@@ -218,9 +232,24 @@ class FileChecker:
         ergebnisse.sort(key=lambda r: (r.ok, r.url))
         return FileCheckSummary(results=ergebnisse)
 
+    def _ist_fremd(self, url: str) -> bool:
+        """Liegt die Datei auf einer anderen Umgebung als die gecrawlte Site?
+
+        Ein PROD-Dokument, das auf ``test.`` zeigt, ist ein vergessener Link -
+        auch dann, wenn die Datei dort erreichbar ist. Ohne Basis-Host laesst
+        sich das nicht beurteilen, dann gilt nichts als fremd.
+        """
+        if not self._basis_host:
+            return False
+        ziel = urlparse(url).netloc.lower().split(":")[0]
+        eigen = self._basis_host.lower().split(":")[0]
+        if ziel == eigen:
+            return False
+        return ohne_umgebungspraefix(ziel) == ohne_umgebungspraefix(eigen)
+
     async def _pruefe_eine(self, client: httpx.AsyncClient, url: str, fundort: str) -> FileCheckResult:
         """Prueft eine einzelne Datei, HEAD mit GET-Rueckfall."""
-        ergebnis = FileCheckResult(url=url, fundort=fundort)
+        ergebnis = FileCheckResult(url=url, fundort=fundort, fremde_umgebung=self._ist_fremd(url))
         try:
             antwort = await client.head(url)
             if antwort.status_code in _HEAD_NICHT_UNTERSTUETZT:
