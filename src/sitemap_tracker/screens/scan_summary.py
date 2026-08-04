@@ -155,12 +155,31 @@ class ScanSummaryScreen(ModalScreen[str | None]):
         return table
 
     def _build_content(self) -> RenderableType:
-        """Score-Zeile, Findings-Ueberschrift und Findings-Tabelle als Gruppe."""
-        return Group(
-            self._score_text(),
-            Text(""),
-            Text(t("summary.findings"), style="bold underline"),
-            self._findings_table(),
+        """Score-Zeile, Findings-Ueberschrift und Findings-Tabelle als Gruppe.
+
+        Ergaenzt oben eine Warnung, wenn der Lauf keine einzige 200er-Seite
+        ergeben hat - dann ist die Sitemap zwangslaeufig leer, und der Grund
+        gehoert genau dorthin, wo der Anwender nach dem Crawl hinsieht.
+        """
+        teile: list[RenderableType] = [self._score_text(), Text("")]
+        warnung = self._warning_text()
+        if warnung is not None:
+            teile.extend((warnung, Text("")))
+        teile.extend((Text(t("summary.findings"), style="bold underline"), self._findings_table()))
+        return Group(*teile)
+
+    def _warning_text(self) -> Text | None:
+        """Baut die Warnzeile fuer den Fall "alles weitergeleitet".
+
+        Returns:
+            Die Warnung, oder None wenn der Lauf unauffaellig war.
+        """
+        s = self._score
+        if s.total_2xx or not s.total_3xx:
+            return None
+        return Text(
+            t("summary.warn_all_redirected", count=s.total_3xx),
+            style="bold red",
         )
 
     @on(Button.Pressed, "#summary-save")

@@ -33,7 +33,7 @@ from textual_widgets import (
 
 from . import __author__, __version__, __year__
 from .i18n import current_language, t
-from .models.crawl_result import CrawlResult, PageStatus
+from .models.crawl_result import CrawlResult, CrawlStats, PageStatus
 from .models.history import History, HistoryEntry
 from .models.settings import CRASH_LOG_NAME, SETTINGS_FILE, Settings, parse_cookies
 from .models.sitemap_reader import discover_sitemap, load_sitemap_from_file, load_sitemap_urls
@@ -642,6 +642,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         sitemap_urls, resolved = SitemapWriter(self._results, base_url=self.start_url).plan()
         self._last_score.sitemap_urls = sitemap_urls
         self._last_score.resolved_redirects = resolved
+        self._warn_if_all_redirected(stats)
         self._refresh_summary_binding()
 
         # Auto-Save wenn --output angegeben
@@ -657,6 +658,47 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             from .screens.scan_summary import ScanSummaryScreen
 
             self.push_screen(ScanSummaryScreen(self._last_score), callback=self._on_summary_closed)
+
+    @staticmethod
+    def all_pages_redirected(stats: CrawlStats) -> bool:
+        """Prueft, ob der Crawl ausschliesslich Weiterleitungen geliefert hat.
+
+        Kommt KEINE einzige 200er-Seite zurueck, obwohl Seiten geholt wurden,
+        ist das kein normaler Zustand: die Sitemap nimmt nur 200er auf und
+        bleibt damit zwangslaeufig leer. In der Praxis steckt dahinter eine
+        Bot-Abwehr, die bei zu vielen gleichzeitigen Zugriffen jede Anfrage auf
+        eine Sperrseite umleitet - belegt am 04.08.2026 an derselben Site:
+        mit 16 parallelen Anfragen ohne Drosselung 0 von 257 Seiten mit 200,
+        mit 8 Anfragen und Drosselung 276 von 341.
+
+        Bewusst eng gefasst (2xx == 0 UND 3xx > 0), damit die Warnung nicht bei
+        einer Site mit hohem, aber legitimem Weiterleitungsanteil feuert.
+
+        Args:
+            stats:
+                Die Statistik des abgeschlossenen Laufs.
+
+        Returns:
+            True, wenn ausschliesslich weitergeleitet wurde.
+        """
+        return stats.total_2xx == 0 and stats.total_3xx > 0
+
+    def _warn_if_all_redirected(self, stats: CrawlStats) -> None:
+        """Warnt deutlich, wenn der Lauf keine einzige 200er-Seite ergab.
+
+        Ohne diesen Hinweis endet der Lauf scheinbar normal, und erst das
+        Speichern meldet lapidar "keine Seiten fuer Sitemap" - die Ursache
+        bleibt dabei voellig im Dunkeln.
+
+        Args:
+            stats:
+                Die Statistik des abgeschlossenen Laufs.
+        """
+        if not self.all_pages_redirected(stats):
+            return
+        self._write_log(t("log.all_redirected", count=stats.total_3xx))
+        self._write_log(t("log.all_redirected_hint"))
+        self.notify(t("notify.all_redirected", count=stats.total_3xx), severity="error", timeout=15)
 
     def _refresh_summary_binding(self) -> None:
         """Aktualisiert die Footer-Sichtbarkeit der Zusammenfassungs-Taste."""
@@ -801,6 +843,21 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         written = writer.write(output_path)
 
         if not written:
+            # Der haeufigste Grund fuer eine leere Sitemap ist, dass jede Seite
+            # weitergeleitet wurde - dann die Ursache nennen statt nur das
+            # Symptom, sonst sucht der Anwender den Fehler beim Speichern.
+            redirected = sum(
+                1 for r in self._results if r.status in (PageStatus.REDIRECT, PageStatus.REDIRECT_EXTERNAL)
+            )
+            if redirected and not any(r.http_status_code == 200 for r in self._results):
+                self._write_log(t("log.all_redirected", count=redirected))
+                self._write_log(t("log.all_redirected_hint"))
+                self.notify(
+                    t("notify.no_pages_all_redirected", count=redirected),
+                    severity="error",
+                    timeout=15,
+                )
+                return
             self._write_log(t("log.no_pages_sitemap"))
             self.notify(t("notify.no_pages_for_sitemap"), severity="warning")
             return
