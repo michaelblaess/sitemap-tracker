@@ -405,16 +405,36 @@ class TestCrawlerSammeltDateien:
         assert "https://test.kunde.example/files/docs/preis.pdf" in gefunden
         assert crawler.ist_fremde_umgebung("https://test.kunde.example/files/docs/preis.pdf")
         assert not crawler.ist_fremde_umgebung("https://www.kunde.example/files/docs/preis.pdf")
+        # Ohne www ist dasselbe Produktivsystem - kein Fund.
+        assert not crawler.ist_fremde_umgebung("https://kunde.example/files/docs/preis.pdf")
 
     def test_fremde_umgebung_wird_im_ergebnis_markiert(self) -> None:
-        """Auch bei Status 200 muss die Markierung im Ergebnis stehen."""
+        """Nur ein ABWEICHENDES Umgebungs-Praefix ist ein Fund.
+
+        "kunde.example" und "www.kunde.example" sind dasselbe Produktivsystem. Wurde
+        das nicht unterschieden, meldete ein realer Lauf 17 von 37 Dateien als
+        "fremde Umgebung" - lauter Fehlalarme, in denen der eine echte Fund
+        untergegangen waere.
+        """
         from sitemap_tracker.services.file_checker import FileChecker
 
         checker = FileChecker(rate_per_minute=0, basis_host="www.kunde.example")
+        # Echte Funde: andere Umgebung.
         assert checker._ist_fremd("https://test.kunde.example/x.pdf")
-        assert checker._ist_fremd("https://kunde.example/x.pdf")
+        assert checker._ist_fremd("https://stage.kunde.example/x.pdf")
+        # Kein Fund: dieselbe Umgebung, nur andere Schreibweise.
+        assert not checker._ist_fremd("https://kunde.example/x.pdf")
         assert not checker._ist_fremd("https://www.kunde.example/x.pdf")
+        # Kein Fund: voellig andere Site.
         assert not checker._ist_fremd("https://shop.kunde.example/x.pdf")
+
+    def test_von_test_aus_ist_prod_die_fremde_umgebung(self) -> None:
+        """Umgekehrt genauso - der Vergleich ist nicht auf PROD festgenagelt."""
+        from sitemap_tracker.services.file_checker import FileChecker
+
+        checker = FileChecker(rate_per_minute=0, basis_host="test.kunde.example")
+        assert checker._ist_fremd("https://www.kunde.example/x.pdf")
+        assert not checker._ist_fremd("https://test.kunde.example/x.pdf")
 
     def test_schwester_subdomain_bleibt_aussen_vor(self) -> None:
         """Nur das www. wird ignoriert, keine andere Subdomain."""

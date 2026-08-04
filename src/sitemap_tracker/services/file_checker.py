@@ -22,7 +22,7 @@ from urllib.parse import urlparse
 import httpx
 
 from ..models.crawl_result import friendly_error_message
-from ..models.url_utils import ohne_umgebungspraefix
+from ..models.url_utils import ohne_umgebungspraefix, umgebung_von
 from .rate_limit import RateLimiter
 
 if TYPE_CHECKING:
@@ -243,9 +243,12 @@ class FileChecker:
             return False
         ziel = urlparse(url).netloc.lower().split(":")[0]
         eigen = self._basis_host.lower().split(":")[0]
-        if ziel == eigen:
-            return False
-        return ohne_umgebungspraefix(ziel) == ohne_umgebungspraefix(eigen)
+        if ohne_umgebungspraefix(ziel) != ohne_umgebungspraefix(eigen):
+            return False  # andere Site, nicht bloss eine andere Umgebung
+        # Nur ein ABWEICHENDES Umgebungs-Praefix ist ein Fund. "kunde.example" und
+        # "www.kunde.example" sind dasselbe Produktivsystem - das darf nicht
+        # gemeldet werden, sonst ertrinkt der echte Fund in Fehlalarmen.
+        return umgebung_von(ziel) != umgebung_von(eigen)
 
     async def _pruefe_eine(self, client: httpx.AsyncClient, url: str, fundort: str) -> FileCheckResult:
         """Prueft eine einzelne Datei, HEAD mit GET-Rueckfall."""

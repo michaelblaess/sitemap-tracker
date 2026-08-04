@@ -17,7 +17,7 @@ from playwright.async_api import Browser, Page, Playwright, ProxySettings, async
 from ..i18n import t
 from ..models.crawl_result import CrawlResult, CrawlStats, PageStatus, friendly_error_message
 from ..models.robots import RobotsChecker
-from ..models.url_utils import ohne_umgebungspraefix
+from ..models.url_utils import ohne_umgebungspraefix, umgebung_von
 from .page_analysis import detect_tech, extract_http_details, extract_seo
 from .rate_limit import RateLimiter
 
@@ -755,9 +755,11 @@ class Crawler:
         """
         ziel = urlparse(url).netloc.lower().split(":")[0]
         eigen = self._allowed_domain.lower().split(":")[0]
-        if ziel == eigen:
-            return False
-        return ohne_umgebungspraefix(ziel) == ohne_umgebungspraefix(eigen)
+        if ohne_umgebungspraefix(ziel) != ohne_umgebungspraefix(eigen):
+            return False  # andere Site, nicht bloss eine andere Umgebung
+        # "kunde.example" und "www.kunde.example" sind dasselbe Produktivsystem - nur
+        # ein abweichendes Umgebungs-Praefix ist ein Fund.
+        return umgebung_von(ziel) != umgebung_von(eigen)
 
     def _verarbeite_link_jenseits_der_tiefe(self, normalized: str, parent: str) -> bool:
         """Merkt Datei-Links, die erst hinter der Tiefenbegrenzung auftauchen.

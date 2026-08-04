@@ -68,14 +68,15 @@ def same_host(host_a: str, host_b: str) -> bool:
     return bool(norm_a) and norm_a == host_b.lower().split(":")[0]
 
 
-# Host-Praefixe, die dieselbe Site in einer anderen Umgebung bezeichnen.
-# Redakteure uebernehmen Links aus der Testumgebung und vergessen sie
-# anzupassen - solche Ziele sollen gefunden und gemeldet werden.
+# Praefixe, die KEINE eigene Umgebung bezeichnen: "www.kunde.example" und
+# "kunde.example" sind dasselbe Produktivsystem, nur anders geschrieben. Ein
+# solcher Link ist voellig normal und darf nicht als Fund gemeldet werden.
+NEUTRALE_PRAEFIXE = ("www.",)
+
+# Praefixe, die eine ANDERE Umgebung bezeichnen. Zeigt ein Produktivlink
+# hierhin, hat jemand einen Link aus der Testumgebung uebernommen und
+# vergessen ihn anzupassen - das ist der eigentliche Fund.
 UMGEBUNGS_PRAEFIXE = (
-    "www.",
-    "prod.",
-    "produktion.",
-    "live.",
     "test.",
     "dev.",
     "stage.",
@@ -83,7 +84,33 @@ UMGEBUNGS_PRAEFIXE = (
     "qa.",
     "int.",
     "preview.",
+    "prod.",
+    "produktion.",
+    "live.",
 )
+
+# Alle Praefixe, die bei der ZUORDNUNG zur Site ignoriert werden.
+_ALLE_PRAEFIXE = NEUTRALE_PRAEFIXE + UMGEBUNGS_PRAEFIXE
+
+
+def umgebung_von(host: str) -> str:
+    """Liefert die Umgebungs-Kennung eines Hosts.
+
+    ``www.kunde.example`` und ``kunde.example`` ergeben beide ``""`` - dieselbe
+    Umgebung. ``test.kunde.example`` ergibt ``test``.
+
+    Args:
+        host:
+            Der Hostname, ggf. mit Port.
+
+    Returns:
+        Das Umgebungs-Praefix ohne Punkt, oder ``""`` fuer das Standardsystem.
+    """
+    rein = host.lower().split(":")[0]
+    for praefix in UMGEBUNGS_PRAEFIXE:
+        if rein.startswith(praefix):
+            return praefix.rstrip(".")
+    return ""
 
 
 def ohne_umgebungspraefix(host: str) -> str:
@@ -102,7 +129,7 @@ def ohne_umgebungspraefix(host: str) -> str:
         Der Host in Kleinschreibung, ohne Port und ohne bekanntes Praefix.
     """
     rein = host.lower().split(":")[0]
-    for praefix in UMGEBUNGS_PRAEFIXE:
+    for praefix in _ALLE_PRAEFIXE:
         if rein.startswith(praefix):
             return rein[len(praefix) :]
     return rein
