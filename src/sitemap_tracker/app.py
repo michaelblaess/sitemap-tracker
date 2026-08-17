@@ -147,8 +147,16 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         # CLI --ignore-robots setzt respect_robots=False, sonst aus Settings laden
         self.respect_robots = respect_robots if not respect_robots else self._settings.respect_robots
 
-        # Theme aus Settings uebernehmen
-        self.theme = self._settings.theme
+        # Theme aus Settings uebernehmen. Ein gespeichertes Theme kann
+        # verschwunden sein: die Bibliothek wurde herabgestuft, das Theme
+        # umbenannt, oder es kam aus einer noch nicht veroeffentlichten
+        # Fassung. Ohne diese Pruefung wirft Textual InvalidThemeError und
+        # die Anwendung startet gar nicht mehr.
+        self._discarded_theme = ""
+        if self._settings.theme in self.available_themes:
+            self.theme = self._settings.theme
+        elif self._settings.theme:
+            self._discarded_theme = self._settings.theme
 
         self._crawler: Crawler | None = None
         self._crawl_running: bool = False
@@ -1504,6 +1512,9 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             anzeige = THEME_DISPLAY_NAMES.get(name, name)
             beschriftung = f"{anzeige} ({name})" if anzeige != name else name
             self._write_log(t("log.theme_active", name=beschriftung))
+            if self._discarded_theme:
+                self._write_log(t("log.theme_unknown", name=self._discarded_theme))
+                self._discarded_theme = ""
 
     def check_action(self, action: str, parameters: tuple) -> bool | None:
         """Steuert Sichtbarkeit von Bindings.
