@@ -318,6 +318,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         mode = t("mode.playwright") if self.render_js else t("mode.httpx")
         robots_info = t("log.robots_on") if self.respect_robots else t("log.robots_off")
         self._write_log(t("log.version", version=__version__))
+        self._log_theme()
         self._write_log(
             t(
                 "log.config",
@@ -1486,6 +1487,23 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         """
         self._settings.theme = theme_name
         self._settings.save()
+        self._log_theme()
+
+    def _log_theme(self) -> None:
+        """Schreibt das aktive Theme ins Log.
+
+        Textual zeigt nirgends an, welches Theme gerade laeuft - nach einem
+        Neustart weiss man also nicht, was man vor sich hat. Der technische
+        Name steht mit dabei, weil genau der in den Einstellungen und in der
+        Befehlspalette auftaucht.
+        """
+        with contextlib.suppress(Exception):
+            from textual_themes import THEME_DISPLAY_NAMES
+
+            name = self.theme or ""
+            anzeige = THEME_DISPLAY_NAMES.get(name, name)
+            beschriftung = f"{anzeige} ({name})" if anzeige != name else name
+            self._write_log(t("log.theme_active", name=beschriftung))
 
     def check_action(self, action: str, parameters: tuple) -> bool | None:
         """Steuert Sichtbarkeit von Bindings.
