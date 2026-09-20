@@ -1,10 +1,3 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/icon-globe-dark.svg">
-    <img src="docs/icon-globe-light.svg" width="120" alt="Sitemap Tracker Logo">
-  </picture>
-</p>
-
 # Sitemap Tracker
 
 <p align="center">
@@ -13,6 +6,10 @@
 </p>
 
 ---
+
+<p align="center">
+  <img src="docs/banner.jpg" alt="sitemap-tracker - Website als Knotengraph neben einer XML-Sitemap mit Änderungsmarken" width="100%">
+</p>
 
 [![Stars](https://img.shields.io/github/stars/michaelblaess/sitemap-tracker?logo=github&logoColor=white&color=fbbf24)](https://github.com/michaelblaess/sitemap-tracker/stargazers)
 [![Forks](https://img.shields.io/github/forks/michaelblaess/sitemap-tracker?logo=github&logoColor=white&color=34d399)](https://github.com/michaelblaess/sitemap-tracker/network/members)
