@@ -196,3 +196,44 @@ class TestSitemapSaveDialog:
             # Abbruch: keine Datei, kein Verzeichniswechsel.
             assert list(tmp_path.iterdir()) == []
             assert app._last_export_dir == before
+
+
+class TestViewSourceBinding:
+    """Tastenkuerzel v: Quelltext der verweisenden Seite fuer die markierte Fehlerzeile."""
+
+    def test_binding_is_registered(self) -> None:
+        actions = {binding.key: binding.action for binding in SitemapTrackerApp.BINDINGS}  # type: ignore[union-attr]
+        assert actions.get("v") == "view_source"
+
+    async def test_hidden_without_results(self) -> None:
+        app = SitemapTrackerApp()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app._results = []
+            assert app.check_action("view_source", ()) is None
+
+    async def test_visible_only_for_row_with_referrer(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from sitemap_tracker.widgets.url_table import UrlTable
+
+        app = SitemapTrackerApp()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app._results = [_html_200("https://example.com/")]
+            monkeypatch.setattr(UrlTable, "has_source_for_current", lambda self: False)
+            assert app.check_action("view_source", ()) is None
+            monkeypatch.setattr(UrlTable, "has_source_for_current", lambda self: True)
+            assert app.check_action("view_source", ()) is True
+
+    async def test_action_opens_source_for_current_row(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from sitemap_tracker.widgets.url_table import UrlTable
+
+        calls: list[str] = []
+        monkeypatch.setattr(UrlTable, "has_source_for_current", lambda self: True)
+        monkeypatch.setattr(UrlTable, "show_source_for_current", lambda self: calls.append("shown"))
+        app = SitemapTrackerApp()
+        async with app.run_test() as pilot:
+            await pilot.pause()
+            app._results = [_html_200("https://example.com/")]
+            await app.run_action("view_source")
+            await pilot.pause()
+        assert calls == ["shown"]

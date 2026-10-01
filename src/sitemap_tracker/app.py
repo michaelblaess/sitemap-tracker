@@ -82,6 +82,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         Binding("d", "copy_detail", "placeholder"),
         Binding("l", "toggle_log", "placeholder"),
         Binding("z", "show_summary", "placeholder"),
+        Binding("v", "view_source", "placeholder"),
         Binding("question_mark", "show_http_codes", "placeholder", key_display="?"),
         Binding("plus", "log_bigger", "+", key_display="+", show=False),
         Binding("minus", "log_smaller", "-", key_display="-", show=False),
@@ -211,6 +212,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "copy_detail": t("binding.copy_detail"),
             "toggle_log": t("binding.log"),
             "show_summary": t("binding.summary"),
+            "view_source": t("binding.view_source"),
             "show_http_codes": t("binding.http_codes"),
             "show_about": t("binding.info"),
         }
@@ -229,6 +231,7 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             "copy_detail": t("tooltip.copy_detail"),
             "toggle_log": t("tooltip.log"),
             "show_summary": t("tooltip.summary"),
+            "view_source": t("tooltip.view_source"),
             "show_http_codes": t("tooltip.http_codes"),
             "show_about": t("tooltip.info"),
             "jira_report": t("tooltip.jira"),
@@ -1157,6 +1160,8 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         stats_panel.show_url_detail(event.result)
         if self.show_preview:
             self._load_preview(event.result.url, self._preview_validator(event.result))
+        # Footer-Sichtbarkeit von 'view_source' haengt an der markierten Zeile.
+        self.refresh_bindings()
 
     def _refresh_detail_for_cursor(self) -> None:
         """Setzt die Detailansicht passend zur aktuell markierten Tabellen-Zeile."""
@@ -1439,6 +1444,16 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
         self._write_log(t("log.sitemap_diff_copied", missing=len(not_in_sitemap), not_crawled=len(not_crawled)))
         self.notify(t("notify.sitemap_diff", missing=len(not_in_sitemap), not_crawled=len(not_crawled)))
 
+    def action_view_source(self) -> None:
+        """Oeffnet die Quelltext-Ansicht fuer die markierte Fehlerseite.
+
+        Tastatur-Aequivalent zum ``[Im Quelltext zeigen]``-Klick im
+        Detail-Panel bzw. zum Kontextmenue-Eintrag - nimmt die erste
+        verweisende Seite der aktuell markierten 4xx/5xx-Zeile.
+        """
+        url_table = self.query_one("#url-table", UrlTable)
+        url_table.show_source_for_current()
+
     def action_copy_detail(self) -> None:
         """Kopiert die URL-Details der markierten URL in die Zwischenablage."""
         from .widgets.stats_panel import _sanitize_url
@@ -1542,6 +1557,13 @@ class SitemapTrackerApp(CrashGuard, ClickableLinksMixin, LogRouter, App):
             return True if self._document_links else None
         if action == "toggle_errors":
             return True if self._results else None
+        if action == "view_source":
+            if self._crawl_running or not self._results:
+                return None
+            try:
+                return True if self.query_one("#url-table", UrlTable).has_source_for_current() else None
+            except Exception:
+                return None
         if action in ("jira_report", "copy_detail", "save_forms"):
             return True if self._results else None
         if action == "sitemap_diff":
