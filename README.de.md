@@ -112,6 +112,7 @@ sitemap-tracker https://example.com --cookie session=abc123
 | `l` | Log ein/aus |
 | `h` | History |
 | `z` | Crawl-Zusammenfassung (Score, Ergebnisse) |
+| `v` | Defekten Link im Quelltext der verweisenden Seite zeigen (4xx/5xx-Zeilen) |
 | `?` | HTTP-Statuscode-Referenz |
 | `i` | Info-Dialog |
 | `q` | Beenden |

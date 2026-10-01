@@ -111,6 +111,7 @@ sitemap-tracker https://example.com --cookie session=abc123
 | `l` | Toggle log |
 | `h` | History |
 | `z` | Crawl summary (score, findings) |
+| `v` | Show the broken link in the referring page source (4xx/5xx rows) |
 | `?` | HTTP status code reference |
 | `i` | Info dialog |
 | `q` | Quit |
