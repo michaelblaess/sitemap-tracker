@@ -54,6 +54,18 @@ irm https://raw.githubusercontent.com/michaelblaess/sitemap-tracker/main/install
 > needs [uv](https://docs.astral.sh/uv/), which fetches the Python matching
 > your processor.
 
+### Run without installing (uv)
+
+With [uv](https://docs.astral.sh/uv/) installed (Python 3.12 or newer):
+
+```bash
+uvx --from sitemap-tracker playwright install chromium   # once, fetches the browser
+uvx sitemap-tracker
+```
+
+Or install it from [PyPI](https://pypi.org/project/sitemap-tracker/) with `pip install sitemap-tracker`, then run
+`playwright install chromium` once.
+
 ## Usage
 
 ```bash
