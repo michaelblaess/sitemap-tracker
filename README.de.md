@@ -22,11 +22,9 @@
 
 Crawlt Websites und generiert standardkonforme `sitemap.xml` Dateien. Nutzt [Playwright](https://playwright.dev/) für JavaScript-Rendering oder [httpx](https://www.python-httpx.org/) für schnelles HTTP-Crawling.
 
-<p align="center">
-  <a href="https://youtu.be/LAu7BjM_fSE"><img src="docs/teaser.jpg" width="640" alt="Den Teaser zu Sitemap Tracker auf YouTube ansehen"></a>
-  <br>
-  <sub><a href="https://youtu.be/LAu7BjM_fSE">Teaser auf YouTube ansehen</a></sub>
-</p>
+https://github.com/user-attachments/assets/0b77d4d9-a1e4-4e4e-8c07-654f9366beee
+
+<p align="center"><sub><a href="https://youtu.be/LAu7BjM_fSE">Auch auf YouTube</a></sub></p>
 
 ## Screenshots
 
