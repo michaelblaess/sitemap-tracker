@@ -839,7 +839,7 @@ wheels = [
 
 [[package]]
 name = "sitemap-tracker"
-version = "2.13.2"
+version = "2.13.3"
 source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
